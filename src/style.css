@@ -286,6 +286,13 @@ dialog:not([open]) { display: none; }
 .md-preview { border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; min-height: 220px; font-weight: normal; overflow-y: auto; max-height: 360px; }
 .form-error { margin: 0 20px 10px; padding: 8px 12px; background: #fef2f2; color: #991b1b; border-radius: 8px; }
 
+#dlg-batch { width: 760px; }
+.batch-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+.batch-table th { text-align: left; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); padding: 6px 8px; }
+.batch-table td { border-bottom: 1px solid var(--line); padding: 6px 8px; word-break: break-word; }
+.batch-table td:first-child { width: 20px; font-weight: 700; }
+.batch-table .st-ok td:first-child { color: var(--ok); }
+.batch-table .st-error td { color: var(--danger); }
 #cat-list { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
 .cat-row { display: flex; align-items: center; gap: 8px; }
 .cat-row input[type=text] { flex: 1; padding: 6px 9px; border: 1px solid var(--line-strong); border-radius: 8px; }

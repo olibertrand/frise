@@ -154,14 +154,14 @@ async function processImageFile(file) {
 
 /* ---------- Format de fichier ---------- */
 
-function buildPayload(readonly) {
+function buildPayload(readonly, doc, images) {
   return {
     format: 'frise-chronologique',
     version: 1,
     readonly: !!readonly,
     savedAt: Date.now(),
-    doc: state.doc,
-    images: usedImages(),
+    doc: doc || state.doc,
+    images: images || usedImages(),
   };
 }
 

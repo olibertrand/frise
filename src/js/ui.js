@@ -707,6 +707,7 @@ const actions = {
   new: () => newFrise(),
   open: () => openFrise(),
   importFC: () => importFriseChronos(),
+  batchFC: () => batchConvertFriseChronos(),
   save: () => saveFrise(false),
   saveAs: () => saveFrise(true),
   merge: () => mergeFrise(),

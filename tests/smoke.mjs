@@ -233,6 +233,73 @@ check((await fcPage.textContent('#details')).includes('forteresse'), 'texte dét
 check((await fcPage.textContent('#save-status')).includes('Non enregistré'), 'frise importée à enregistrer');
 await fcPage.close();
 
+console.log('Conversion d’un dossier FriseChronos (Edge/Chrome)');
+const fcText = readFileSync(join(root, 'tests', 'fixtures', 'frisechronos-exemple'), 'utf8');
+const batchPage = await context.newPage();
+batchPage.on('pageerror', e => errors.push(String(e)));
+await batchPage.addInitScript(fc => {
+  const file = (name, text) => ({ kind: 'file', name, getFile: async () => new File([text], name) });
+  const dir = (name, children) => {
+    const map = new Map(children.map(c => [c.name, c]));
+    return {
+      kind: 'directory', name, map,
+      async *entries() { for (const e of [...map]) yield e; },
+      async getFileHandle(n, opt) {
+        if (map.has(n)) return map.get(n);
+        if (!opt || !opt.create) { const e = new Error('absent'); e.name = 'NotFoundError'; throw e; }
+        const fh = { kind: 'file', name: n, written: null,
+          async createWritable() { return { async write(b) { fh.written = await b.text(); }, async close() {} }; } };
+        map.set(n, fh);
+        return fh;
+      },
+    };
+  };
+  window.__root = dir('travail', [
+    file('notes.txt', 'rien'),
+    file('deja.html', 'ancienne conversion'),
+    dir('3eA', [file('frise.bin', fc), dir('thomas', [file('frise_thomas.bin', fc)]), file('deja.bin', fc)]),
+    dir('3eB', [file('frise.bin', fc), file('abime.bin', 'pas une frise')]),
+  ]);
+  window.showDirectoryPicker = async () => window.__root;
+}, fcText);
+await batchPage.goto(appUrl);
+await batchPage.click('[data-menu=menu-file]');
+await batchPage.click('[data-action=batchFC]');
+await batchPage.waitForSelector('#batch-close:not([disabled])');
+const written = await batchPage.evaluate(() => Object.fromEntries([...window.__root.map]
+  .filter(([, h]) => h.written).map(([n, h]) => [n, h.written])));
+const names = Object.keys(written).sort();
+check(JSON.stringify(names) === JSON.stringify(['3eB - frise.html', 'frise.html', 'frise_thomas.html']), 'frises écrites à la racine : ' + names.join(', '));
+check((await batchPage.textContent('#batch-body')).includes('3 frises converties'), 'bilan : 3 conversions');
+check((await batchPage.textContent('#batch-body')).includes('déjà présente'), 'fichier déjà converti non remplacé');
+check((await batchPage.textContent('#batch-body')).includes('pas une frise FriseChronos'), 'fichier abîmé signalé');
+await batchPage.screenshot({ path: join(out, '10-conversion-lot.png') });
+const convPath = join(out, 'converti-frise_thomas.html');
+writeFileSync(convPath, written['frise_thomas.html']);
+const conv = await openPage(pathToFileURL(convPath).href);
+check(await conv.locator('#svg-host .event').count() === 2, 'frise convertie lisible');
+check((await conv.inputValue('#doc-subtitle')).includes('3eA/thomas/frise_thomas.bin'), 'chemin d’origine en sous-titre');
+await conv.close();
+await batchPage.close();
+
+console.log('Conversion d’un dossier FriseChronos (repli .zip)');
+const srcDir = join(out, 'travail');
+mkdirSync(join(srcDir, 'classe1', 'eleve'), { recursive: true });
+writeFileSync(join(srcDir, 'classe1', 'eleve', 'chronos.bin'), fcText);
+writeFileSync(join(srcDir, 'classe1', 'autre.bin'), fcText);
+const zipPage = await openPage(appUrl);
+await zipPage.evaluate(() => { delete window.showDirectoryPicker; });
+await zipPage.click('[data-menu=menu-file]');
+const [dirChooser] = await Promise.all([zipPage.waitForEvent('filechooser'), zipPage.click('[data-action=batchFC]')]);
+const [zipDl] = await Promise.all([zipPage.waitForEvent('download'), dirChooser.setFiles(srcDir)]);
+const zipPath = join(out, 'frises-converties.zip');
+await zipDl.saveAs(zipPath);
+check(zipDl.suggestedFilename() === 'Frises converties.zip', 'archive .zip téléchargée');
+const zipBuf = readFileSync(zipPath);
+check(zipBuf.subarray(0, 4).toString('hex') === '504b0304', 'archive .zip valide');
+check(zipBuf.includes('chronos.html') && zipBuf.includes('autre.html'), 'les deux frises sont dans l’archive');
+await zipPage.close();
+
 console.log('Travaux récents');
 const page4 = await openPage(appUrl);
 await page4.waitForSelector('#recents .recent');

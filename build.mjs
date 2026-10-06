@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const root = dirname(fileURLToPath(import.meta.url));
 const src = p => readFileSync(join(root, 'src', p), 'utf8');
 
-const JS_FILES = ['boot.js', 'util.js', 'model.js', 'import-frisechronos.js', 'render.js', 'ui.js', 'io.js', 'example.js', 'main.js'];
+const JS_FILES = ['boot.js', 'util.js', 'model.js', 'import-frisechronos.js', 'render.js', 'ui.js', 'io.js', 'batch.js', 'example.js', 'main.js'];
 
 const js = "(function () {\n'use strict';\n" +
   JS_FILES.map(f => `/* ---- ${f} ---- */\n` + src('js/' + f)).join('\n') +

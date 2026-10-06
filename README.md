@@ -39,6 +39,7 @@ de rouvrir l’application puis de chercher son fichier.
 | **Mode révision** | Les titres sont masqués (« ? ») ; on clique puis on révèle la réponse. L’export en image dans ce mode donne une frise à compléter |
 | **Exports** | Image PNG (vue ou frise entière), impression / PDF avec les fiches détaillées, **page web en lecture seule** à partager |
 | **Import FriseChronos** | « Fichier → Importer une frise FriseChronos… » convertit un fichier enregistré sur frisechronos.fr : événements, périodes, images, textes. Les lignes de FriseChronos deviennent des catégories (« Ligne 1 », « Ligne 2 »… à renommer) |
+| **Conversion par lots** | « Fichier → Convertir un dossier de frises FriseChronos… » : choisissez votre répertoire de travail ; tous les fichiers `.bin` de ses sous-dossiers sont convertis et enregistrés ensemble dans ce répertoire (Edge/Chrome ; avec Firefox, un `.zip` est téléchargé) |
 | **Travail de groupe** | « Ajouter le contenu d’une autre frise » fusionne les frises de plusieurs élèves |
 | **Confort** | Annuler / rétablir, dupliquer, double-clic sur la frise pour ajouter à cette date, affichage grand format pour vidéoprojecteur |
 

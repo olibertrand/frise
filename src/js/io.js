@@ -221,12 +221,13 @@ async function openFromFileObject(file, handle, confirmed) {
   }
 }
 
-function buildHTMLFile(readonly) {
+/* Fichier .html autonome (application + données). Sans doc/images : la frise ouverte. */
+function buildHTMLFile(readonly, doc, images) {
   const root = PRISTINE.cloneNode(true);
-  const json = JSON.stringify(buildPayload(readonly))
+  const json = JSON.stringify(buildPayload(readonly, doc, images))
     .replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
   root.querySelector('#frise-data').textContent = json;
-  root.querySelector('title').textContent = state.doc.title + ' — Frise chronologique';
+  root.querySelector('title').textContent = (doc || state.doc).title + ' — Frise chronologique';
   return '<!DOCTYPE html>\n' + root.outerHTML;
 }
 
