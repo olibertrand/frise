@@ -706,6 +706,7 @@ function toggleQuiz() {
 const actions = {
   new: () => newFrise(),
   open: () => openFrise(),
+  importFC: () => importFriseChronos(),
   save: () => saveFrise(false),
   saveAs: () => saveFrise(true),
   merge: () => mergeFrise(),

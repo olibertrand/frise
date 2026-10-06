@@ -178,17 +178,42 @@ async function openFrise() {
   if (file) openFromFileObject(file, null, true);
 }
 
+async function importFriseChronos() {
+  if (!confirmDiscard()) return;
+  if (window.showOpenFilePicker) {
+    try {
+      const [h] = await window.showOpenFilePicker({ id: 'frisechronos' });
+      await openFromFileObject(await h.getFile(), null, true);
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      console.warn(e);
+    }
+  }
+  const file = await pickFile('');
+  if (file) openFromFileObject(file, null, true);
+}
+
 async function openFromFileObject(file, handle, confirmed) {
   if (!confirmed && !confirmDiscard()) return;
   try {
-    const p = parseFrisePayloadText(await readFileAs(file, 'text'));
+    const p = parseFrisePayloadText(await readFileAs(file, 'text'), file.name);
     if (state.doc.items.length) autosaveNow();
     loadPayload(p);
     const isHtml = /\.html?$/i.test(file.name);
     state.fileName = isHtml ? file.name : null;
     state.fileHandle = isHtml && handle && !p.readonly ? handle : null;
+    if (p.imported) {
+      state.dirty = true;
+      scheduleAutosave();
+    }
     renderAll();
     fitAll();
+    if (p.imported) {
+      toast(`Frise ${p.imported} importée (${plural(state.doc.items.length, 'élément')}). ` +
+        'Enregistrez-la au nouveau format avec « Enregistrer ».', 6000);
+      return;
+    }
     toast(`« ${state.doc.title} » est ouverte`);
     if (!p.readonly) checkNewerAutosave(p);
   } catch (e) {
@@ -260,7 +285,7 @@ async function mergeFrise() {
   if (!file) file = await pickFile('.html,.htm,.json,.frise');
   if (!file) return;
   try {
-    const p = parseFrisePayloadText(await readFileAs(file, 'text'));
+    const p = parseFrisePayloadText(await readFileAs(file, 'text'), file.name);
     commit(d => {
       const catMap = {};
       for (const c of p.doc.categories) {

@@ -233,7 +233,8 @@ function sanitizePayload(raw) {
 }
 
 /* Extrait les données d'un fichier .html enregistré par l'application (ou d'un .json). */
-function parseFrisePayloadText(text) {
+function parseFrisePayloadText(text, fileName) {
+  if (isFriseChronos(text)) return parseFriseChronos(text, fileName);
   const trimmed = text.replace(/^﻿/, '').trim();
   if (trimmed.startsWith('{')) return sanitizePayload(JSON.parse(trimmed));
   const html = new DOMParser().parseFromString(text, 'text/html');

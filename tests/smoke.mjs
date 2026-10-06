@@ -216,6 +216,23 @@ await dl4.saveAs(pngOut);
 const sig = readFileSync(pngOut).subarray(0, 8).toString('hex');
 check(sig === '89504e470d0a1a0a', 'image PNG valide');
 
+console.log('Import FriseChronos');
+const fcPage = await openPage(appUrl);
+const [fcChooser] = await Promise.all([fcPage.waitForEvent('filechooser'), fcPage.click('#welcome [data-action=importFC]')]);
+await fcChooser.setFiles(join(root, 'tests', 'fixtures', 'frisechronos-exemple'));
+await fcPage.waitForSelector('#svg-host .event');
+await settle(fcPage);
+check(await fcPage.locator('#svg-host .event').count() === 2, 'événements importés');
+check(await fcPage.locator('#svg-host .period', { hasText: 'Première Guerre mondiale' }).count() === 1, 'période importée');
+check(await fcPage.locator('#svg-host .event', { hasText: 'Prise de la Bastille : Paris' }).count() === 1, 'titre contenant « : » conservé');
+check(await fcPage.locator('#svg-host .event image').count() === 1, 'image importée');
+check((await fcPage.textContent('#svg-host')).includes('52 av. J.-C.'), 'année négative → av. J.-C.');
+await fcPage.locator('#svg-host .event', { hasText: 'Bastille' }).click();
+await settle(fcPage);
+check((await fcPage.textContent('#details')).includes('forteresse'), 'texte détaillé importé');
+check((await fcPage.textContent('#save-status')).includes('Non enregistré'), 'frise importée à enregistrer');
+await fcPage.close();
+
 console.log('Travaux récents');
 const page4 = await openPage(appUrl);
 await page4.waitForSelector('#recents .recent');
