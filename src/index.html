@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frise chronologique</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='14' width='28' height='5' rx='2' fill='%231e293b'/%3E%3Ccircle cx='9' cy='10' r='4' fill='%232563eb'/%3E%3Ccircle cx='22' cy='10' r='4' fill='%23dc2626'/%3E%3Crect x='6' y='22' width='16' height='5' rx='2' fill='%2316a34a'/%3E%3C/svg%3E">
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-event" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><line x1="12" y1="13" x2="12" y2="22"/></symbol>
+    <symbol id="i-period" viewBox="0 0 24 24"><rect x="2" y="9" width="20" height="7" rx="3"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></symbol>
+    <symbol id="i-zoomin" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></symbol>
+    <symbol id="i-zoomout" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+    <symbol id="i-quiz" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  </defs>
+</svg>
+
+<header id="toolbar">
+  <div class="tb-group">
+    <div class="menu-wrap" data-edit>
+      <button class="tb" data-menu="menu-file" title="Fichier"><svg class="ic"><use href="#i-file"/></svg><span class="lbl opt">Fichier</span><svg class="ic sm"><use href="#i-down"/></svg></button>
+      <div class="menu" id="menu-file" hidden>
+        <button data-action="new">Nouvelle frise</button>
+        <button data-action="open">Ouvrir une frise… <kbd>Ctrl+O</kbd></button>
+        <button data-action="save">Enregistrer <kbd>Ctrl+S</kbd></button>
+        <button data-action="saveAs">Enregistrer sous… <kbd>Ctrl+Maj+S</kbd></button>
+        <hr>
+        <button data-action="merge">Ajouter le contenu d’une autre frise…</button>
+        <button data-action="example">Ouvrir la frise d’exemple</button>
+      </div>
+    </div>
+    <button class="tb primary-soft" data-action="save" data-edit title="Enregistrer (Ctrl+S)"><svg class="ic"><use href="#i-save"/></svg><span class="lbl">Enregistrer</span></button>
+    <button class="tb" data-action="open" data-ro title="Ouvrir une frise"><svg class="ic"><use href="#i-folder"/></svg><span class="lbl">Ouvrir</span></button>
+  </div>
+  <div class="tb-group" data-edit>
+    <button class="tb accent" data-action="addEvent" title="Ajouter un événement (date précise)"><svg class="ic"><use href="#i-event"/></svg><span class="lbl">Événement</span></button>
+    <button class="tb accent" data-action="addPeriod" title="Ajouter une période (début et fin)"><svg class="ic"><use href="#i-period"/></svg><span class="lbl">Période</span></button>
+  </div>
+  <div class="tb-group" data-edit>
+    <button class="tb icon" data-action="undo" title="Annuler (Ctrl+Z)"><svg class="ic"><use href="#i-undo"/></svg></button>
+    <button class="tb icon" data-action="redo" title="Rétablir (Ctrl+Y)"><svg class="ic"><use href="#i-redo"/></svg></button>
+  </div>
+  <div class="tb-group">
+    <button class="tb icon" data-action="zoomOut" title="Dézoomer (−)"><svg class="ic"><use href="#i-zoomout"/></svg></button>
+    <button class="tb icon" data-action="zoomIn" title="Zoomer (+)"><svg class="ic"><use href="#i-zoomin"/></svg></button>
+    <button class="tb" data-action="fit" title="Voir toute la frise (0)"><svg class="ic"><use href="#i-fit"/></svg><span class="lbl">Tout voir</span></button>
+  </div>
+  <div class="tb-group">
+    <button class="tb" data-action="toggleList" title="Liste des éléments et recherche"><svg class="ic"><use href="#i-list"/></svg><span class="lbl opt">Liste</span></button>
+    <button class="tb" data-action="categories" data-edit title="Catégories et couleurs"><svg class="ic"><use href="#i-tag"/></svg><span class="lbl opt">Catégories</span></button>
+    <button class="tb" data-action="toggleQuiz" id="btn-quiz" title="Mode révision : les titres sont masqués, cliquez pour les révéler"><svg class="ic"><use href="#i-quiz"/></svg><span class="lbl opt">Révision</span></button>
+  </div>
+  <div class="tb-spacer"></div>
+  <div class="tb-group">
+    <span id="save-status" data-edit></span>
+    <button class="tb primary" data-action="editCopy" data-ro title="Modifier cette frise (une copie sera créée)"><svg class="ic"><use href="#i-edit"/></svg><span class="lbl">Modifier une copie</span></button>
+    <div class="menu-wrap">
+      <button class="tb" data-menu="menu-export" title="Exporter, imprimer"><svg class="ic"><use href="#i-download"/></svg><span class="lbl opt">Exporter</span><svg class="ic sm"><use href="#i-down"/></svg></button>
+      <div class="menu right" id="menu-export" hidden>
+        <button data-action="exportPngView">Image PNG — partie affichée</button>
+        <button data-action="exportPngAll">Image PNG — frise entière</button>
+        <button data-action="exportHtmlRo" data-edit>Page web en lecture seule</button>
+        <hr>
+        <button data-action="print">Imprimer / PDF…</button>
+      </div>
+    </div>
+    <button class="tb icon" data-action="settings" data-edit title="Réglages d’affichage"><svg class="ic"><use href="#i-sliders"/></svg></button>
+    <button class="tb icon" data-action="help" title="Aide"><svg class="ic"><use href="#i-help"/></svg></button>
+  </div>
+</header>
+
+<section id="titlebar">
+  <div class="titles">
+    <input id="doc-title" class="doc-title" maxlength="200" spellcheck="true" aria-label="Titre de la frise" placeholder="Titre de la frise">
+    <input id="doc-subtitle" class="doc-subtitle" maxlength="300" aria-label="Sous-titre" placeholder="Auteur(s), classe, date… (cliquez pour écrire)">
+  </div>
+  <div id="legend" class="legend"></div>
+</section>
+<div id="banner" hidden></div>
+
+<main id="stage">
+  <div id="scroller"><div id="svg-host"></div></div>
+  <div id="welcome" hidden>
+    <div class="welcome-card">
+      <h1>Créer une frise chronologique</h1>
+      <p class="muted">Ajoutez des événements (une date) et des périodes (un début et une fin), avec une image et un texte détaillé.</p>
+      <div class="welcome-actions">
+        <button class="big accent" data-action="addEvent"><svg class="ic"><use href="#i-event"/></svg>Ajouter un événement</button>
+        <button class="big accent" data-action="addPeriod"><svg class="ic"><use href="#i-period"/></svg>Ajouter une période</button>
+      </div>
+      <div class="welcome-actions secondary">
+        <button class="btn" data-action="open"><svg class="ic"><use href="#i-folder"/></svg>Ouvrir une frise…</button>
+        <button class="btn" data-action="example"><svg class="ic"><use href="#i-file"/></svg>Voir un exemple</button>
+      </div>
+      <div id="recents"></div>
+    </div>
+  </div>
+  <aside id="listpanel" class="side left" hidden>
+    <div class="side-head">
+      <strong>Liste chronologique</strong>
+      <button class="icon-btn" data-action="toggleList" title="Fermer"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <input id="list-search" type="search" placeholder="Rechercher…" aria-label="Rechercher">
+    <div id="list-items"></div>
+  </aside>
+  <aside id="details" class="side right" hidden></aside>
+  <div class="zoom-hint">Molette : zoomer · Glisser : se déplacer · Double-clic : ajouter</div>
+</main>
+
+<dialog id="editor">
+  <form method="dialog" id="editor-form" novalidate>
+    <header class="dlg-head">
+      <h2 id="editor-title">Nouvel élément</h2>
+      <button type="button" class="icon-btn" data-close title="Fermer"><svg class="ic"><use href="#i-x"/></svg></button>
+    </header>
+    <div class="dlg-body editor-grid">
+      <div class="col">
+        <div class="seg" role="radiogroup" aria-label="Type">
+          <label><input type="radio" name="type" value="event" checked><span><svg class="ic"><use href="#i-event"/></svg>Événement</span></label>
+          <label><input type="radio" name="type" value="period"><span><svg class="ic"><use href="#i-period"/></svg>Période</span></label>
+        </div>
+        <label class="field">Titre
+          <input name="title" maxlength="200" required placeholder="Ex. : Prise de la Bastille">
+        </label>
+        <fieldset class="datefield" data-which="start">
+          <legend id="lbl-start">Date</legend>
+          <div class="date-row">
+            <input name="startD" type="number" min="1" max="31" placeholder="Jour" aria-label="Jour" class="d-day">
+            <select name="startM" aria-label="Mois"></select>
+            <input name="startY" type="number" placeholder="Année" aria-label="Année" class="d-year" required>
+            <label class="chk"><input type="checkbox" name="startBC">av. J.-C.</label>
+          </div>
+        </fieldset>
+        <fieldset class="datefield" data-which="end">
+          <legend>Fin</legend>
+          <div class="date-row">
+            <input name="endD" type="number" min="1" max="31" placeholder="Jour" aria-label="Jour" class="d-day">
+            <select name="endM" aria-label="Mois"></select>
+            <input name="endY" type="number" placeholder="Année" aria-label="Année" class="d-year">
+            <label class="chk"><input type="checkbox" name="endBC">av. J.-C.</label>
+          </div>
+        </fieldset>
+        <label class="chk"><input type="checkbox" name="approx">Date(s) approximative(s) (« vers… »)</label>
+        <p class="hint">Le jour et le mois sont facultatifs : l’année seule suffit.</p>
+        <div class="row2">
+          <label class="field">Catégorie
+            <select name="category"></select>
+          </label>
+          <div class="field">Couleur
+            <div class="swatches" id="editor-colors"></div>
+          </div>
+        </div>
+        <div class="field">Image
+          <div id="img-drop" class="img-drop" tabindex="0">
+            <div class="img-empty">
+              <svg class="ic lg"><use href="#i-image"/></svg>
+              <span>Glissez une image ici, collez-la (<kbd>Ctrl+V</kbd>)<br>ou</span>
+              <button type="button" class="btn" data-pick-image>Choisir un fichier…</button>
+            </div>
+            <img id="img-preview" alt="" hidden>
+          </div>
+          <div class="img-tools" hidden>
+            <button type="button" class="btn sm" data-pick-image>Changer</button>
+            <button type="button" class="btn sm danger-text" data-remove-image>Retirer l’image</button>
+          </div>
+          <input name="imageCaption" maxlength="300" placeholder="Légende / source de l’image (ex. : Jean-Pierre Houël, 1789, BnF)">
+        </div>
+      </div>
+      <div class="col">
+        <div class="field grow">Texte détaillé <span class="muted small">(s’affiche quand on clique sur l’élément)</span>
+          <div class="md-toolbar">
+            <button type="button" data-md="bold" title="Gras"><b>G</b></button>
+            <button type="button" data-md="italic" title="Italique"><i>I</i></button>
+            <button type="button" data-md="underline" title="Souligné"><u>S</u></button>
+            <button type="button" data-md="h" title="Intertitre">Titre</button>
+            <button type="button" data-md="list" title="Liste à puces">• Liste</button>
+            <button type="button" data-md="quote" title="Citation">« Citation »</button>
+            <button type="button" data-md="link" title="Lien">Lien</button>
+            <span class="md-spacer"></span>
+            <button type="button" data-md="preview" class="md-preview-btn" title="Aperçu">Aperçu</button>
+          </div>
+          <textarea name="details" rows="14" placeholder="Racontez, expliquez, citez un document…&#10;&#10;**gras**, *italique*, - liste, &gt; citation"></textarea>
+          <div class="md-preview rich" hidden></div>
+        </div>
+        <label class="field">Lien « En savoir plus » <span class="muted small">(facultatif)</span>
+          <input name="link" type="url" placeholder="https://fr.wikipedia.org/wiki/…">
+        </label>
+      </div>
+    </div>
+    <p class="form-error" id="editor-error" role="alert" hidden></p>
+    <footer class="dlg-foot">
+      <button type="button" class="btn danger" id="editor-delete">Supprimer</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close>Annuler</button>
+      <button type="submit" class="btn primary">Valider</button>
+    </footer>
+  </form>
+</dialog>
+
+<dialog id="dlg-categories">
+  <header class="dlg-head">
+    <h2>Catégories</h2>
+    <button type="button" class="icon-btn" data-close title="Fermer"><svg class="ic"><use href="#i-x"/></svg></button>
+  </header>
+  <div class="dlg-body">
+    <p class="muted">Chaque catégorie a une couleur, utilisée par ses événements et périodes. Cliquez sur une catégorie de la légende pour la masquer ou l’afficher.</p>
+    <div id="cat-list"></div>
+    <button type="button" class="btn" id="cat-add"><svg class="ic"><use href="#i-plus"/></svg>Ajouter une catégorie</button>
+  </div>
+  <footer class="dlg-foot"><span class="spacer"></span><button type="button" class="btn primary" data-close>Terminé</button></footer>
+</dialog>
+
+<dialog id="dlg-settings">
+  <header class="dlg-head">
+    <h2>Réglages d’affichage</h2>
+    <button type="button" class="icon-btn" data-close title="Fermer"><svg class="ic"><use href="#i-x"/></svg></button>
+  </header>
+  <div class="dlg-body settings">
+    <label class="chk"><input type="checkbox" id="set-images"> Afficher les images sur la frise</label>
+    <label class="chk"><input type="checkbox" id="set-centuries"> Afficher les siècles (et millénaires) sous l’axe</label>
+    <label class="field">Taille du texte
+      <select id="set-textsize">
+        <option value="0.9">Petite</option>
+        <option value="1">Normale</option>
+        <option value="1.2">Grande</option>
+        <option value="1.45">Très grande (projection)</option>
+      </select>
+    </label>
+  </div>
+  <footer class="dlg-foot"><span class="spacer"></span><button type="button" class="btn primary" data-close>Terminé</button></footer>
+</dialog>
+
+<dialog id="dlg-print">
+  <header class="dlg-head">
+    <h2>Imprimer / enregistrer en PDF</h2>
+    <button type="button" class="icon-btn" data-close title="Fermer"><svg class="ic"><use href="#i-x"/></svg></button>
+  </header>
+  <div class="dlg-body settings">
+    <label class="chk"><input type="checkbox" id="print-frise" checked> La frise entière</label>
+    <label class="chk"><input type="checkbox" id="print-cards" checked> Les fiches détaillées (images et textes)</label>
+    <p class="hint">Pour obtenir un PDF, choisissez « Enregistrer au format PDF » (ou « Microsoft Print to PDF ») comme imprimante.</p>
+  </div>
+  <footer class="dlg-foot"><span class="spacer"></span><button type="button" class="btn" data-close>Annuler</button><button type="button" class="btn primary" id="print-go">Imprimer…</button></footer>
+</dialog>
+
+<dialog id="dlg-help">
+  <header class="dlg-head">
+    <h2>Aide</h2>
+    <button type="button" class="icon-btn" data-close title="Fermer"><svg class="ic"><use href="#i-x"/></svg></button>
+  </header>
+  <div class="dlg-body rich help">
+    <h3>Construire la frise</h3>
+    <ul>
+      <li><b>Événement</b> : quelque chose qui se passe à une date (ex. : 14 juillet 1789).</li>
+      <li><b>Période</b> : quelque chose qui dure, avec un début et une fin (ex. : la Première Guerre mondiale).</li>
+      <li>Pour les dates avant notre ère, cochez <b>av. J.-C.</b> (ou tapez une année négative).</li>
+      <li><b>Double-cliquez</b> sur un espace vide de la frise pour ajouter un événement à cet endroit.</li>
+      <li><b>Cliquez</b> sur un élément pour lire son texte détaillé ; <b>double-cliquez</b> pour le modifier.</li>
+      <li>Pour ajouter une image : glissez-la dans la fenêtre de modification, ou copiez-la (clic droit → « Copier l’image ») puis collez-la avec <kbd>Ctrl+V</kbd>. Pensez à indiquer la source !</li>
+    </ul>
+    <h3>Se déplacer</h3>
+    <ul>
+      <li><b>Molette</b> de la souris : zoomer / dézoomer. <b>Maj + molette</b> : défiler de gauche à droite.</li>
+      <li><b>Glisser</b> avec la souris (ou le doigt) : se déplacer. Pincer à deux doigts : zoomer.</li>
+      <li><b>Tout voir</b> : afficher toute la frise d’un coup.</li>
+    </ul>
+    <h3>Enregistrer et rouvrir</h3>
+    <ul>
+      <li><b>Enregistrer</b> crée un fichier <b>.html</b> qui contient toute la frise, images comprises.</li>
+      <li>Pour rouvrir la frise : <b>double-cliquez simplement sur ce fichier</b>. Il s’ouvre dans le navigateur, prêt à être modifié.</li>
+      <li>Ce fichier peut être déposé sur l’ENT, envoyé par messagerie ou copié sur une clé USB.</li>
+      <li>Le travail est aussi sauvegardé automatiquement dans le navigateur : en cas d’oubli, il est proposé à la réouverture (« Travaux récents »).</li>
+      <li>Avec Edge ou Chrome, après le premier enregistrement, <kbd>Ctrl+S</kbd> met directement à jour le même fichier.</li>
+    </ul>
+    <h3>Raccourcis clavier</h3>
+    <table class="kbd-table">
+      <tr><td><kbd>Ctrl+S</kbd></td><td>Enregistrer</td><td><kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd></td><td>Annuler / Rétablir</td></tr>
+      <tr><td><kbd>E</kbd></td><td>Nouvel événement</td><td><kbd>P</kbd></td><td>Nouvelle période</td></tr>
+      <tr><td><kbd>+</kbd> / <kbd>−</kbd></td><td>Zoomer / dézoomer</td><td><kbd>0</kbd></td><td>Tout voir</td></tr>
+      <tr><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Élément précédent / suivant</td><td><kbd>Suppr</kbd></td><td>Supprimer l’élément choisi</td></tr>
+    </table>
+    <h3>Mode révision</h3>
+    <p>Les titres sont remplacés par « ? ». Cliquez sur un élément puis sur « Révéler » pour vérifier vos connaissances.</p>
+  </div>
+  <footer class="dlg-foot"><span class="spacer"></span><button type="button" class="btn primary" data-close>Fermer</button></footer>
+</dialog>
+
+<div id="lightbox" hidden><img alt=""><div class="lb-caption"></div></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="print-area"></div>
+<input type="file" id="file-open" accept=".html,.htm,.json,.frise" hidden>
+<input type="file" id="file-image" accept="image/*" hidden>
+
+<script id="frise-data" type="application/json"></script>
+<script>
+/*__JS__*/
+</script>
+</body>
+</html>
