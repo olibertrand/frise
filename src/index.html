@@ -53,6 +53,8 @@
         <hr>
         <button data-action="importFC">Importer une frise FriseChronos…</button>
         <button data-action="batchFC">Convertir un dossier de frises FriseChronos…</button>
+        <button data-action="reports">Fiches d’évaluation d’une classe…</button>
+        <hr>
         <button data-action="merge">Ajouter le contenu d’une autre frise…</button>
         <button data-action="example">Ouvrir la frise d’exemple</button>
       </div>
@@ -261,7 +263,7 @@
 
 <dialog id="dlg-batch">
   <header class="dlg-head">
-    <h2>Conversion des frises FriseChronos</h2>
+    <h2 id="batch-title">Conversion des frises FriseChronos</h2>
   </header>
   <div class="dlg-body" id="batch-body"></div>
   <footer class="dlg-foot"><span class="spacer"></span><button type="button" class="btn primary" id="batch-close" data-close>Fermer</button></footer>
@@ -309,6 +311,7 @@
       <li>Le travail est aussi sauvegardé automatiquement dans le navigateur : en cas d’oubli, il est proposé à la réouverture (« Travaux récents »).</li>
       <li><b>Frises FriseChronos</b> : « Fichier → Importer une frise FriseChronos… » convertit un fichier enregistré sur frisechronos.fr (événements, périodes, images). Enregistrez ensuite la frise au nouveau format.</li>
       <li><b>Plusieurs frises FriseChronos d’un coup</b> : « Fichier → Convertir un dossier de frises FriseChronos… ». Choisissez votre dossier de travail : tous les fichiers <b>.bin</b> de ses sous-dossiers sont convertis et enregistrés ensemble dans ce dossier (les fichiers déjà convertis ne sont pas remplacés).</li>
+      <li><b>Fiches d’évaluation</b> (enseignant) : « Fichier → Fiches d’évaluation d’une classe… ». Choisissez le dossier qui contient un sous-dossier par élève (ex. <i>SNT_B_dupont</i>) : chaque élève obtient une fiche avec son nom puis, pour chaque repère de ses frises, la date, le titre, l’image et le texte saisi. Les fiches sont enregistrées dans le sous-dossier « Fiches evaluation ».</li>
       <li>Avec Edge ou Chrome, après le premier enregistrement, <kbd>Ctrl+S</kbd> met directement à jour le même fichier.</li>
     </ul>
     <h3>Raccourcis clavier</h3>

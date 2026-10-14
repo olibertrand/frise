@@ -43,8 +43,9 @@ async function convertBatchSource(file, relPath) {
 
 /* ---------- Fenêtre de suivi ---------- */
 
-function batchDialog(html, done) {
+function batchDialog(html, done, title) {
   const dlg = $('#dlg-batch');
+  if (title) $('#batch-title').textContent = title;
   $('#batch-body').innerHTML = html;
   $('#batch-close').disabled = !done;
   if (!dlg.open) dlg.showModal();
@@ -86,7 +87,7 @@ async function batchConvertFriseChronos() {
 }
 
 async function batchFromDirectory(dir) {
-  batchDialog('<p>Recherche des fichiers .bin…</p>', false);
+  batchDialog('<p>Recherche des fichiers .bin…</p>', false, 'Conversion des frises FriseChronos');
   const sources = [];
   for await (const e of walkDirectory(dir, '')) if (isBatchSource(e.name)) sources.push(e);
   sources.sort((a, b) => a.path.localeCompare(b.path));
@@ -129,6 +130,7 @@ function pickDirectoryFiles() {
 }
 
 async function batchFromFileList(files) {
+  batchDialog('<p>Conversion…</p>', false, 'Conversion des frises FriseChronos');
   // webkitRelativePath commence par le nom du dossier choisi : on le retire
   const sources = files
     .map(f => ({ file: f, path: (f.webkitRelativePath || f.name).split('/').slice(1).join('/') || f.name }))

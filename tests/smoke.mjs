@@ -282,6 +282,69 @@ check((await conv.inputValue('#doc-subtitle')).includes('3eA/thomas/frise_thomas
 await conv.close();
 await batchPage.close();
 
+console.log('Fiches d’évaluation d’une classe');
+const friseA = readFileSync(savedPath, 'utf8');
+const friseB = written['frise_thomas.html'];
+const repPage = await context.newPage();
+repPage.on('pageerror', e => errors.push(String(e)));
+await repPage.addInitScript(([a, b]) => {
+  const file = (name, text) => ({ kind: 'file', name, getFile: async () => new File([text], name) });
+  const dir = (name, children) => {
+    const map = new Map(children.map(c => [c.name, c]));
+    const d = {
+      kind: 'directory', name, map,
+      async *entries() { for (const e of [...map]) yield e; },
+      async getDirectoryHandle(n, opt) {
+        if (!map.has(n)) { if (!opt || !opt.create) throw Object.assign(new Error('absent'), { name: 'NotFoundError' }); map.set(n, dir(n, [])); }
+        return map.get(n);
+      },
+      async getFileHandle(n, opt) {
+        if (map.has(n)) return map.get(n);
+        if (!opt || !opt.create) throw Object.assign(new Error('absent'), { name: 'NotFoundError' });
+        const fh = { kind: 'file', name: n, written: null,
+          async createWritable() { return { async write(x) { fh.written = await x.text(); }, async close() {} }; } };
+        map.set(n, fh);
+        return fh;
+      },
+    };
+    return d;
+  };
+  window.__classe = dir('SNT', [
+    file('consignes.html', '<p>consignes</p>'),
+    dir('SNT_B_martin', [file('ma frise.html', a), dir('brouillons', [file('v2.html', b)])]),
+    dir('SNT_B_mathieu_lea', [file('frise.html', b), file('notes.html', '<html><body>pas une frise</body></html>')]),
+    dir('SNT_B_zoe', [file('image.png', 'x')]),
+  ]);
+  window.showDirectoryPicker = async () => window.__classe;
+}, [friseA, friseB]);
+await repPage.goto(appUrl);
+await repPage.click('[data-menu=menu-file]');
+await repPage.click('[data-action=reports]');
+await repPage.waitForSelector('#batch-close:not([disabled])');
+const reports = await repPage.evaluate(() => {
+  const out = window.__classe.map.get('Fiches evaluation');
+  return out ? Object.fromEntries([...out.map].map(([n, h]) => [n, h.written])) : {};
+});
+const repNames = Object.keys(reports).sort();
+check(JSON.stringify(repNames) === JSON.stringify(['Fiche - martin.html', 'Fiche - mathieu lea.html', 'Fiche - zoe.html', 'Toutes les fiches.html']),
+  'une fiche par élève + fiche globale : ' + repNames.join(', '));
+check((await repPage.textContent('#batch-body')).includes('3 fiches produites'), 'bilan des fiches');
+await repPage.screenshot({ path: join(out, '11-fiches-bilan.png') });
+const fichePath = join(out, 'Fiche - martin.html');
+writeFileSync(fichePath, reports['Fiche - martin.html']);
+writeFileSync(join(out, 'Toutes les fiches.html'), reports['Toutes les fiches.html']);
+const fiche = await openPage(pathToFileURL(fichePath).href);
+check((await fiche.textContent('h1')) === 'martin', 'nom de l’élève en tête');
+check(await fiche.locator('section.frise').count() === 2, 'les deux frises de l’élève (y compris sous-dossier)');
+check(await fiche.locator('.rep', { hasText: 'Bataille de Valmy' }).locator('img').count() === 1, 'image du repère');
+check((await fiche.locator('.rep', { hasText: 'Bataille de Valmy' }).textContent()).includes('victoire'), 'texte saisi du repère');
+check(await fiche.locator('.rep .empty').count() > 0, 'repères sans texte signalés');
+await fiche.screenshot({ path: join(out, '12-fiche-eleve.png'), fullPage: false });
+await fiche.close();
+check(reports['Fiche - mathieu lea.html'].includes('Impossible de lire ce fichier'), 'fichier HTML non-frise signalé');
+check(reports['Fiche - zoe.html'].includes('Aucune frise'), 'élève sans frise signalé');
+await repPage.close();
+
 console.log('Conversion d’un dossier FriseChronos (repli .zip)');
 const srcDir = join(out, 'travail');
 mkdirSync(join(srcDir, 'classe1', 'eleve'), { recursive: true });
