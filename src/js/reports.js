@@ -106,7 +106,16 @@ function reportPage(title, body) {
 
 /* ---------- Lecture des dossiers et production des fiches ---------- */
 
-async function studentReports() {
+function openReportsDialog() {
+  $('#dlg-reports').showModal();
+}
+
+function reportFormats() {
+  return { html: $('#rep-html').checked, pdf: $('#rep-pdf').checked, tex: $('#rep-tex').checked };
+}
+
+async function studentReports(formats) {
+  if (!formats.html && !formats.pdf && !formats.tex) { toast('Choisissez au moins un format.'); return; }
   if (window.showDirectoryPicker) {
     let dir = null;
     try {
@@ -115,10 +124,10 @@ async function studentReports() {
       if (e && e.name === 'AbortError') return;
       console.warn('Accès direct au dossier impossible : repli sur un fichier .zip', e);
     }
-    if (dir) { await reportsFromDirectory(dir); return; }
+    if (dir) { await reportsFromDirectory(dir, formats); return; }
   }
   const files = await pickDirectoryFiles();
-  if (files && files.length) await reportsFromFileList(files);
+  if (files && files.length) await reportsFromFileList(files, formats);
 }
 
 /* sources : [{ folder, path, read: () => Promise<string> }] → élèves avec leurs frises */
@@ -140,25 +149,59 @@ async function buildStudents(sources, folders) {
   return folders
     .map(folder => {
       const name = names.get(folder);
-      let out = safeFileName('Fiche - ' + name) + '.html';
-      for (let n = 2; used.has(out.toLowerCase()); n++) out = safeFileName(`Fiche - ${name} (${n})`) + '.html';
-      used.add(out.toLowerCase());
-      return { folder, name, out, frises: byFolder.get(folder) };
+      let base = safeFileName('Fiche - ' + name);
+      for (let n = 2; used.has(base.toLowerCase()); n++) base = safeFileName(`Fiche - ${name} (${n})`);
+      used.add(base.toLowerCase());
+      return { folder, name, base, frises: byFolder.get(folder) };
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
 }
 
-function reportFiles(students) {
-  const files = students.map(s => ({ name: s.out, html: reportPage(s.name + ' — frises', reportStudentHtml(s)) }));
-  if (students.length > 1) {
-    files.push({ name: 'Toutes les fiches.html', html: reportPage('Toutes les fiches', students.map(reportStudentHtml).join('')) });
+/* → [{ name: chemin relatif, data: texte ou octets }] */
+async function reportFiles(students, formats) {
+  const files = [];
+  const multi = students.length > 1;
+  if (formats.html) {
+    for (const s of students) files.push({ name: s.base + '.html', data: reportPage(s.name + ' — frises', reportStudentHtml(s)) });
+    if (multi) files.push({ name: 'Toutes les fiches.html', data: reportPage('Toutes les fiches', students.map(reportStudentHtml).join('')) });
+  }
+  if (formats.pdf) {
+    const cache = new Map();
+    for (let i = 0; i < students.length; i++) {
+      batchDialog(`<p>Création des PDF… ${i + 1} / ${students.length}</p>`, false);
+      files.push({ name: students[i].base + '.pdf', data: await reportPdf([students[i]], students[i].name, cache) });
+    }
+    if (multi) {
+      batchDialog('<p>Création de « Toutes les fiches.pdf »…</p>', false);
+      files.push({ name: 'Toutes les fiches.pdf', data: await reportPdf(students, 'Toutes les fiches', cache) });
+    }
+  }
+  if (formats.tex) {
+    batchDialog('<p>Création des fichiers LaTeX…</p>', false);
+    files.push(...await reportLatex(students));
   }
   return files;
 }
 
-function reportsSummary(students, where) {
+function formatsText(formats) {
+  return [formats.html && 'pages web', formats.pdf && 'PDF', formats.tex && 'LaTeX (dossier « latex »)'].filter(Boolean).join(', ');
+}
+
+async function writeReportFile(dir, path, data) {
+  const parts = path.split('/');
+  const name = parts.pop();
+  let d = dir;
+  for (const p of parts) d = await d.getDirectoryHandle(p, { create: true });
+  const fh = await d.getFileHandle(name, { create: true });
+  const w = await fh.createWritable();
+  await w.write(new Blob([data]));
+  await w.close();
+}
+
+function reportsSummary(students, where, formats) {
   let h = `<p><b>${plural(students.length, 'fiche produite', 'fiches produites')}</b>` +
-    (students.length > 1 ? ', plus « Toutes les fiches.html » pour tout imprimer d’un coup' : '') + '.</p>';
+    (formats && students.length ? ` (${formatsText(formats)})` : '') +
+    (students.length > 1 ? ', plus « Toutes les fiches » pour tout imprimer d’un coup' : '') + '.</p>';
   if (where) h += `<p class="muted">${where}</p>`;
   if (students.length) {
     h += '<table class="batch-table"><thead><tr><th></th><th>Élève</th><th>Frises</th><th>Repères</th></tr></thead><tbody>' +
@@ -174,7 +217,7 @@ function reportsSummary(students, where) {
   batchDialog(h, true);
 }
 
-async function reportsFromDirectory(dir) {
+async function reportsFromDirectory(dir, formats) {
   batchDialog('<p>Recherche des dossiers d’élèves…</p>', false, 'Fiches d’évaluation');
   const folders = [], sources = [];
   for await (const [name, handle] of dir.entries()) {
@@ -190,16 +233,14 @@ async function reportsFromDirectory(dir) {
   }
   const students = await buildStudents(sources, folders.sort());
   const outDir = await dir.getDirectoryHandle(REPORT_DIR, { create: true });
-  for (const f of reportFiles(students)) {
-    const fh = await outDir.getFileHandle(f.name, { create: true });
-    const w = await fh.createWritable();
-    await w.write(new Blob([f.html], { type: 'text/html' }));
-    await w.close();
-  }
-  reportsSummary(students, `Les fiches ont été enregistrées dans « ${esc(dir.name)} / ${REPORT_DIR} ». Ouvrez-les d’un double-clic ; elles s’impriment directement.`);
+  const files = await reportFiles(students, formats);
+  batchDialog('<p>Enregistrement des fichiers…</p>', false);
+  for (const f of files) await writeReportFile(outDir, f.name, f.data);
+  reportsSummary(students, `Les fiches ont été enregistrées dans « ${esc(dir.name)} / ${REPORT_DIR} ».` +
+    (formats.tex ? ' Pour LaTeX : compilez les fichiers .tex du dossier « latex » avec pdflatex, ou importez ce dossier dans Overleaf.' : ''), formats);
 }
 
-async function reportsFromFileList(files) {
+async function reportsFromFileList(files, formats) {
   batchDialog('<p>Lecture des dossiers…</p>', false, 'Fiches d’évaluation');
   const folders = new Set(), sources = [];
   for (const f of files) {
@@ -212,9 +253,10 @@ async function reportsFromFileList(files) {
   const students = await buildStudents(sources, [...folders].sort());
   if (students.length) {
     const enc = new TextEncoder();
-    downloadBlob(makeZip(reportFiles(students).map(f => ({ name: f.name, data: enc.encode(f.html) }))), 'Fiches evaluation.zip');
+    const files = await reportFiles(students, formats);
+    downloadBlob(makeZip(files.map(f => ({ name: f.name, data: typeof f.data === 'string' ? enc.encode(f.data) : f.data }))), 'Fiches evaluation.zip');
   }
   reportsSummary(students, students.length
     ? 'Votre navigateur ne permet pas d’écrire directement dans le dossier : les fiches ont été téléchargées dans <b>« Fiches evaluation.zip »</b>.'
-    : 'Aucun dossier d’élève n’a été trouvé. Choisissez le dossier qui contient les dossiers des élèves.');
+    : 'Aucun dossier d’élève n’a été trouvé. Choisissez le dossier qui contient les dossiers des élèves.', formats);
 }

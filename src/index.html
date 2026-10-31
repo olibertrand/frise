@@ -269,6 +269,21 @@
   <footer class="dlg-foot"><span class="spacer"></span><button type="button" class="btn primary" id="batch-close" data-close>Fermer</button></footer>
 </dialog>
 
+<dialog id="dlg-reports">
+  <header class="dlg-head">
+    <h2>Fiches d’évaluation d’une classe</h2>
+    <button type="button" class="icon-btn" data-close title="Fermer"><svg class="ic"><use href="#i-x"/></svg></button>
+  </header>
+  <div class="dlg-body settings">
+    <p class="muted">Choisissez ensuite le dossier qui contient un sous-dossier par élève (ex. <i>SNT_B_dupont</i>). Les fiches seront enregistrées dans son sous-dossier « Fiches evaluation ».</p>
+    <strong>Formats à produire</strong>
+    <label class="chk"><input type="checkbox" id="rep-pdf" checked> PDF — prêt à imprimer ou à archiver</label>
+    <label class="chk"><input type="checkbox" id="rep-html" checked> Pages web (HTML)</label>
+    <label class="chk"><input type="checkbox" id="rep-tex"> LaTeX — fichiers .tex et images, à compiler avec pdflatex ou Overleaf</label>
+  </div>
+  <footer class="dlg-foot"><span class="spacer"></span><button type="button" class="btn" data-close>Annuler</button><button type="button" class="btn primary" id="rep-go">Choisir le dossier de la classe…</button></footer>
+</dialog>
+
 <dialog id="dlg-print">
   <header class="dlg-head">
     <h2>Imprimer / enregistrer en PDF</h2>
@@ -311,7 +326,7 @@
       <li>Le travail est aussi sauvegardé automatiquement dans le navigateur : en cas d’oubli, il est proposé à la réouverture (« Travaux récents »).</li>
       <li><b>Frises FriseChronos</b> : « Fichier → Importer une frise FriseChronos… » convertit un fichier enregistré sur frisechronos.fr (événements, périodes, images). Enregistrez ensuite la frise au nouveau format.</li>
       <li><b>Plusieurs frises FriseChronos d’un coup</b> : « Fichier → Convertir un dossier de frises FriseChronos… ». Choisissez votre dossier de travail : tous les fichiers <b>.bin</b> de ses sous-dossiers sont convertis et enregistrés ensemble dans ce dossier (les fichiers déjà convertis ne sont pas remplacés).</li>
-      <li><b>Fiches d’évaluation</b> (enseignant) : « Fichier → Fiches d’évaluation d’une classe… ». Choisissez le dossier qui contient un sous-dossier par élève (ex. <i>SNT_B_dupont</i>) : chaque élève obtient une fiche avec son nom puis, pour chaque repère de ses frises, la date, le titre, l’image et le texte saisi. Les fiches sont enregistrées dans le sous-dossier « Fiches evaluation ».</li>
+      <li><b>Fiches d’évaluation</b> (enseignant) : « Fichier → Fiches d’évaluation d’une classe… ». Choisissez le dossier qui contient un sous-dossier par élève (ex. <i>SNT_B_dupont</i>) : chaque élève obtient une fiche avec son nom puis, pour chaque repère de ses frises, la date, le titre, l’image et le texte saisi. Les fiches sont enregistrées dans le sous-dossier « Fiches evaluation », au choix en <b>PDF</b>, en pages web et en <b>LaTeX</b>.</li>
       <li>Avec Edge ou Chrome, après le premier enregistrement, <kbd>Ctrl+S</kbd> met directement à jour le même fichier.</li>
     </ul>
     <h3>Raccourcis clavier</h3>

@@ -708,7 +708,7 @@ const actions = {
   open: () => openFrise(),
   importFC: () => importFriseChronos(),
   batchFC: () => batchConvertFriseChronos(),
-  reports: () => studentReports(),
+  reports: () => openReportsDialog(),
   save: () => saveFrise(false),
   saveAs: () => saveFrise(true),
   merge: () => mergeFrise(),
@@ -794,6 +794,11 @@ function bindGlobal() {
   for (const inp of [title, sub]) inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
 
   $('#print-go').addEventListener('click', doPrint);
+  $('#rep-go').addEventListener('click', () => {
+    const formats = reportFormats();
+    $('#dlg-reports').close();
+    studentReports(formats);
+  });
   window.addEventListener('afterprint', () => { $('#print-area').innerHTML = ''; });
 
   document.addEventListener('keydown', e => {

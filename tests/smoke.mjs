@@ -2,6 +2,7 @@
 // Nécessite Playwright (npm i -D playwright) et un Chromium.
 import { createRequire } from 'node:module';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -302,7 +303,11 @@ await repPage.addInitScript(([a, b]) => {
         if (map.has(n)) return map.get(n);
         if (!opt || !opt.create) throw Object.assign(new Error('absent'), { name: 'NotFoundError' });
         const fh = { kind: 'file', name: n, written: null,
-          async createWritable() { return { async write(x) { fh.written = await x.text(); }, async close() {} }; } };
+          async createWritable() { return { async write(x) {
+            const b = new Uint8Array(await x.arrayBuffer());
+            let s = ''; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));
+            fh.written = btoa(s);
+          }, async close() {} }; } };
         map.set(n, fh);
         return fh;
       },
@@ -320,11 +325,24 @@ await repPage.addInitScript(([a, b]) => {
 await repPage.goto(appUrl);
 await repPage.click('[data-menu=menu-file]');
 await repPage.click('[data-action=reports]');
-await repPage.waitForSelector('#batch-close:not([disabled])');
-const reports = await repPage.evaluate(() => {
-  const out = window.__classe.map.get('Fiches evaluation');
-  return out ? Object.fromEntries([...out.map].map(([n, h]) => [n, h.written])) : {};
+await repPage.check('#rep-tex');
+await repPage.click('#rep-go');
+await repPage.waitForSelector('#batch-close:not([disabled])', { timeout: 60000 });
+// tout ce qui a été écrit, sous-dossiers compris (contenu en base64)
+const reportsAll = await repPage.evaluate(() => {
+  const out = {};
+  const walk = (d, prefix) => {
+    for (const [n, h] of d.map) {
+      if (h.kind === 'directory') walk(h, prefix + n + '/');
+      else if (h.written != null) out[prefix + n] = h.written;
+    }
+  };
+  const root = window.__classe.map.get('Fiches evaluation');
+  if (root) walk(root, '');
+  return out;
 });
+const reportsBin = Object.fromEntries(Object.entries(reportsAll).map(([n, b64]) => [n, Buffer.from(b64, 'base64')]));
+const reports = Object.fromEntries(Object.entries(reportsBin).filter(([n]) => n.endsWith('.html')).map(([n, b]) => [n, b.toString('utf8')]));
 const repNames = Object.keys(reports).sort();
 check(JSON.stringify(repNames) === JSON.stringify(['Fiche - martin.html', 'Fiche - mathieu lea.html', 'Fiche - zoe.html', 'Toutes les fiches.html']),
   'une fiche par élève + fiche globale : ' + repNames.join(', '));
@@ -343,6 +361,37 @@ await fiche.screenshot({ path: join(out, '12-fiche-eleve.png'), fullPage: false 
 await fiche.close();
 check(reports['Fiche - mathieu lea.html'].includes('Impossible de lire ce fichier'), 'fichier HTML non-frise signalé');
 check(reports['Fiche - zoe.html'].includes('Aucune frise'), 'élève sans frise signalé');
+
+const pdfNames = Object.keys(reportsBin).filter(n => n.endsWith('.pdf')).sort();
+check(JSON.stringify(pdfNames) === JSON.stringify(['Fiche - martin.pdf', 'Fiche - mathieu lea.pdf', 'Fiche - zoe.pdf', 'Toutes les fiches.pdf']),
+  'PDF par élève + PDF global : ' + pdfNames.join(', '));
+const has = cmd => { try { execFileSync('which', [cmd], { stdio: 'ignore' }); return true; } catch { return false; } };
+for (const n of pdfNames) writeFileSync(join(out, n), reportsBin[n]);
+check(reportsBin['Fiche - martin.pdf'].subarray(0, 5).toString() === '%PDF-', 'en-tête PDF');
+if (has('pdftotext')) {
+  const txt = execFileSync('pdftotext', ['-layout', join(out, 'Fiche - martin.pdf'), '-'], { encoding: 'utf8' });
+  check(txt.includes('martin') && txt.includes('Bataille de Valmy') && txt.includes('victoire'), 'texte lisible dans le PDF (nom, repère, texte saisi)');
+  check(txt.includes('Révolution française') && txt.includes('« Vive la Nation ! »'), 'accents et guillemets français dans le PDF');
+  const all = execFileSync('pdfinfo', [join(out, 'Toutes les fiches.pdf')], { encoding: 'utf8' });
+  const pages = +(all.match(/Pages:\s+(\d+)/) || [])[1];
+  check(pages >= 3, `PDF global lisible (${pages} pages)`);
+  const imgs = execFileSync('pdfimages', ['-list', join(out, 'Fiche - martin.pdf')], { encoding: 'utf8' }).trim().split('\n').length - 2;
+  check(imgs >= 1, 'images incluses dans le PDF');
+}
+
+const texNames = Object.keys(reportsBin).filter(n => n.startsWith('latex/'));
+check(texNames.includes('latex/fiche-martin.tex') && texNames.includes('latex/toutes-les-fiches.tex'), 'fichiers LaTeX produits');
+check(texNames.some(n => n.startsWith('latex/images/')), 'images exportées pour LaTeX');
+const texDir = join(out, 'latex');
+for (const n of texNames) { mkdirSync(dirname(join(out, n)), { recursive: true }); writeFileSync(join(out, n), reportsBin[n]); }
+if (has('pdflatex')) {
+  for (const t of ['fiche-martin.tex', 'fiche-mathieu-lea.tex', 'fiche-zoe.tex', 'toutes-les-fiches.tex']) {
+    let ok = true;
+    try { execFileSync('pdflatex', ['-interaction=nonstopmode', '-halt-on-error', t], { cwd: texDir, stdio: 'pipe' }); }
+    catch (e) { ok = false; console.error(String(e.stdout).split('\n').filter(l => l.startsWith('!')).join('\n')); }
+    check(ok, 'compilation pdflatex de ' + t);
+  }
+}
 await repPage.close();
 
 console.log('Conversion d’un dossier FriseChronos (repli .zip)');
