@@ -68,23 +68,25 @@ const TEX_PREAMBLE = `\\documentclass[11pt,a4paper]{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage[french]{babel}
 \\usepackage{lmodern}
-\\usepackage[margin=2cm]{geometry}
+\\usepackage[margin=1cm,includefoot]{geometry}
 \\usepackage{graphicx}
 \\usepackage{xcolor}
 \\usepackage[hidelinks]{hyperref}
 \\setlength{\\parindent}{0pt}
-\\setlength{\\parskip}{4pt}
+\\setlength{\\parskip}{2pt}
 \\pagestyle{plain}
 `;
 
 async function texStudent(s, images) {
-  let t = `\\section*{${texEsc(s.name)}}\n` +
+  // nom, dossier et nombre de frises sur une seule ligne
+  let t = `\\noindent{\\Large\\bfseries ${texEsc(s.name)}}\\quad` +
     `{\\small\\color{gray} Dossier « ${texEsc(s.folder)} » · ${plural(s.frises.filter(f => !f.error).length, 'frise')}}\\par\n`;
   if (!s.frises.length) t += '\\emph{Aucune frise dans ce dossier.}\\par\n';
   let n = 0;
   for (const f of s.frises) {
+    t += '\n\\medskip\n';
     if (f.error) {
-      t += `\\subsection*{${texEsc(f.fileName)}}\n{\\color{red} Impossible de lire ce fichier : ${texEsc(f.error)}}\\par\n`;
+      t += `\\noindent{\\large\\bfseries ${texEsc(f.fileName)}}\\par\n{\\color{red} Impossible de lire ce fichier : ${texEsc(f.error)}}\\par\n`;
       continue;
     }
     const { doc } = f.payload;
@@ -93,29 +95,34 @@ async function texStudent(s, images) {
     const nEv = items.filter(i => i.type !== 'period').length;
     const nImg = items.filter(i => i.imageId && f.payload.images[i.imageId]).length;
     const nTxt = items.filter(i => (i.details || '').trim()).length;
-    t += `\\subsection*{${texEsc(doc.title || 'Frise sans titre')} {\\normalfont\\small --- ${texEsc(f.fileName)}}}\n`;
-    if (doc.subtitle) t += `{\\small\\color{gray} ${texEsc(doc.subtitle)}}\\par\n`;
-    t += `{\\small\\color{gray} ${plural(items.length, 'repère')} (${plural(nEv, 'événement')}, ${plural(items.length - nEv, 'période')}) · ${nImg} avec image · ${nTxt} avec texte}\\par\n`;
+    t += `\\noindent{\\large\\bfseries ${texEsc(doc.title || 'Frise sans titre')}} {\\small\\color{gray} --- ${texEsc(f.fileName)}}\\par\\vspace{-2pt}\\hrule\\vspace{2pt}\n`;
+    t += `{\\small\\color{gray} ${doc.subtitle ? texEsc(doc.subtitle) + ' · ' : ''}${plural(items.length, 'repère')} (${plural(nEv, 'événement')}, ${plural(items.length - nEv, 'période')}) · ${nImg} avec image · ${nTxt} avec texte}\\par\n`;
     if (!items.length) t += '\\emph{Aucun repère.}\\par\n';
     for (const it of items) {
       const cat = cats.get(it.categoryId);
       const col = texColor(it.color || (cat && cat.color));
-      t += '\n\\medskip\n' +
-        `\\noindent{\\color[HTML]{${col}}\\rule[-0.2em]{3pt}{1.1em}}\\enspace\\textbf{\\large ${texEsc(it.title || 'Sans titre')}}\\par\n` +
-        `{\\color[HTML]{${col}}\\bfseries ${texEsc(cap(itemDateText(it, false)))}}\\par\n` +
-        `{\\footnotesize\\color{gray} ${it.type === 'period' ? 'Période' : 'Événement'}${cat ? ' · ' + texEsc(cat.name) : ''}}\\par\n`;
+      // date et titre sur la même ligne
+      let block = `\\noindent{\\color[HTML]{${col}}\\rule[-0.2em]{3pt}{1.1em}}\\enspace` +
+        `{\\color[HTML]{${col}}\\bfseries ${texEsc(cap(itemDateText(it, false)))}}\\enspace\\textbf{\\large ${texEsc(it.title || 'Sans titre')}}\\par\n`;
+      if ((it.details || '').trim()) block += texRich(mdToHtml(it.details));
+      let img = '';
       const data = it.imageId && f.payload.images[it.imageId];
       if (data) {
         try {
           const file = await texImageFile(data);
           const name = `images/${texSlug(s.name)}-${String(++n).padStart(2, '0')}.${file.ext}`;
           images.push({ name: 'latex/' + name, data: file.bytes });
-          t += `\\includegraphics[width=0.5\\linewidth,height=6cm,keepaspectratio]{${name}}\\par\n`;
+          img = `\\includegraphics[width=\\linewidth,height=1.4\\linewidth,keepaspectratio]{${name}}`;
         } catch (e) { /* image illisible : ignorée */ }
-        if (it.imageCaption) t += `{\\footnotesize\\itshape\\color{gray} ${texEsc(it.imageCaption)}}\\par\n`;
+        if (img && it.imageCaption) block += `{\\footnotesize\\itshape\\color{gray} Image : ${texEsc(it.imageCaption)}}\\par\n`;
       }
-      t += (it.details || '').trim() ? texRich(mdToHtml(it.details)) : '{\\color{gray}\\itshape (aucun texte saisi)}\\par\n';
-      if (it.link) t += `{\\footnotesize Lien : \\href{${texUrl(it.link)}}{${texEsc(it.link)}}}\\par\n`;
+      if (it.link) block += `{\\footnotesize Lien : \\href{${texUrl(it.link)}}{${texEsc(it.link)}}}\\par\n`;
+      t += '\n\\smallskip\n';
+      // image à droite, limitée à 1/6 de la largeur
+      t += img
+        ? `\\noindent\\begin{minipage}[t]{0.80\\linewidth}\\vspace{0pt}\n${block}\\end{minipage}\\hfill` +
+          `\\begin{minipage}[t]{0.1667\\linewidth}\\vspace{0pt}\n${img}\n\\end{minipage}\\par\n`
+        : block;
     }
   }
   return t;

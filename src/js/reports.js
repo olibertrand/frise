@@ -33,26 +33,27 @@ function studentNames(folders) {
 /* ---------- Mise en page d'une fiche ---------- */
 
 const REPORT_CSS = `
-body { font-family: "Segoe UI", system-ui, Arial, sans-serif; color: #1f2937; max-width: 860px; margin: 24px auto; padding: 0 20px; line-height: 1.5; }
-h1 { font-size: 26px; margin: 0 0 4px; }
-.meta { color: #6b7280; margin: 0 0 18px; }
-.frise { margin: 26px 0 0; }
-.frise h2 { font-size: 19px; margin: 0; padding: 8px 12px; background: #f1f5f9; border-radius: 8px; }
+@page { margin: 1cm; }
+body { font-family: "Segoe UI", system-ui, Arial, sans-serif; color: #1f2937; max-width: 980px; margin: 1cm auto; padding: 0 1cm; line-height: 1.45; }
+.head { margin: 0 0 6px; }
+.head h1 { display: inline; font-size: 26px; margin: 0 14px 0 0; }
+.head .meta { color: #6b7280; }
+.frise { margin: 16px 0 0; }
+.frise h2 { font-size: 19px; margin: 0; padding-bottom: 2px; border-bottom: 1px solid #cbd5e1; }
 .frise .file { font-weight: normal; color: #6b7280; font-size: 13px; }
-.frise .stats { color: #475569; font-size: 13.5px; margin: 6px 12px 10px; }
-.rep { border-left: 4px solid var(--c, #64748b); padding: 6px 0 6px 14px; margin: 14px 0; break-inside: avoid; }
+.frise .stats { color: #475569; font-size: 13px; margin: 3px 0 4px; }
+.rep { border-left: 4px solid var(--c, #64748b); padding: 2px 0 2px 12px; margin: 8px 0; break-inside: avoid; display: flow-root; }
 .rep h3 { font-size: 16px; margin: 0; }
-.rep .date { color: var(--c, #64748b); font-weight: 600; }
-.rep .tags { font-size: 12px; color: #6b7280; }
-.rep img { max-width: 100%; max-height: 260px; display: block; margin: 8px 0 2px; border-radius: 6px; }
+.rep h3 .date { color: var(--c, #64748b); font-size: 14px; margin-right: 8px; }
+.rep img { float: right; width: auto; height: auto; max-width: 16.6%; max-height: 180px; margin: 2px 0 4px 12px; border-radius: 4px; }
 .rep .cap { font-size: 12px; color: #6b7280; font-style: italic; }
-.rep .txt p, .rep .txt ul, .rep .txt ol, .rep .txt blockquote { margin: 6px 0; }
-.rep .txt blockquote { border-left: 3px solid #d1d5db; padding: 2px 10px; color: #374151; font-style: italic; }
-.rep .empty { color: #9ca3af; font-style: italic; }
+.rep .txt p, .rep .txt ul, .rep .txt ol, .rep .txt blockquote { margin: 3px 0; }
+.rep .txt blockquote { border-left: 3px solid #d1d5db; padding: 1px 10px; color: #374151; font-style: italic; }
 .rep .lnk { font-size: 12.5px; word-break: break-all; }
+.empty { color: #9ca3af; font-style: italic; }
 .err { color: #b91c1c; }
 .student + .student { break-before: page; }
-@media print { body { margin: 0 auto; } a { color: inherit; } }
+@media print { body { margin: 0 auto; padding: 0; max-width: none; } a { color: inherit; } }
 `;
 
 function reportFriseHtml(f) {
@@ -60,30 +61,24 @@ function reportFriseHtml(f) {
     return `<section class="frise"><h2>${esc(f.fileName)}</h2><p class="err">Impossible de lire ce fichier : ${esc(f.error)}</p></section>`;
   }
   const { doc, images } = f.payload;
-  const cats = new Map(doc.categories.map(c => [c.id, c]));
   const items = doc.items.slice().sort(compareItems);
+  const cats = new Map(doc.categories.map(c => [c.id, c]));
   const nEv = items.filter(i => i.type !== 'period').length;
   const nImg = items.filter(i => i.imageId && images[i.imageId]).length;
   const nTxt = items.filter(i => (i.details || '').trim()).length;
   let h = `<section class="frise"><h2>${esc(doc.title || 'Frise sans titre')} <span class="file">— ${esc(f.fileName)}</span></h2>`;
-  if (doc.subtitle) h += `<p class="stats">${esc(doc.subtitle)}</p>`;
-  h += `<p class="stats">${plural(items.length, 'repère')} (${plural(nEv, 'événement')}, ${plural(items.length - nEv, 'période')}) · ` +
+  h += `<p class="stats">${doc.subtitle ? esc(doc.subtitle) + ' · ' : ''}${plural(items.length, 'repère')} (${plural(nEv, 'événement')}, ${plural(items.length - nEv, 'période')}) · ` +
     `${nImg} avec image · ${nTxt} avec texte</p>`;
   if (!items.length) h += '<p class="empty">Aucun repère.</p>';
   for (const it of items) {
     const cat = cats.get(it.categoryId);
     const color = it.color || (cat && cat.color) || '#64748b';
+    const img = it.imageId && images[it.imageId];
     h += `<div class="rep" style="--c:${color}">` +
-      `<h3>${esc(it.title || 'Sans titre')}</h3>` +
-      `<div class="date">${esc(cap(itemDateText(it, false)))}</div>` +
-      `<div class="tags">${it.type === 'period' ? 'Période' : 'Événement'}${cat ? ' · ' + esc(cat.name) : ''}</div>`;
-    if (it.imageId && images[it.imageId]) {
-      h += `<img src="${esc(images[it.imageId])}" alt="">`;
-      if (it.imageCaption) h += `<div class="cap">${esc(it.imageCaption)}</div>`;
-    }
-    h += (it.details || '').trim()
-      ? `<div class="txt">${mdToHtml(it.details)}</div>`
-      : '<p class="empty">(aucun texte saisi)</p>';
+      (img ? `<img src="${esc(img)}" alt="">` : '') +
+      `<h3><span class="date">${esc(cap(itemDateText(it, false)))}</span>${esc(it.title || 'Sans titre')}</h3>`;
+    if ((it.details || '').trim()) h += `<div class="txt">${mdToHtml(it.details)}</div>`;
+    if (img && it.imageCaption) h += `<div class="cap">Image : ${esc(it.imageCaption)}</div>`;
     if (it.link) h += `<div class="lnk">Lien : <a href="${esc(it.link)}">${esc(it.link)}</a></div>`;
     h += '</div>';
   }
@@ -92,8 +87,8 @@ function reportFriseHtml(f) {
 
 function reportStudentHtml(student) {
   const ok = student.frises.filter(f => !f.error).length;
-  return `<article class="student"><h1>${esc(student.name)}</h1>` +
-    `<p class="meta">Dossier « ${esc(student.folder)} » · ${plural(ok, 'frise')}</p>` +
+  return `<article class="student"><div class="head"><h1>${esc(student.name)}</h1>` +
+    `<span class="meta">Dossier « ${esc(student.folder)} » · ${plural(ok, 'frise')}</span></div>` +
     (student.frises.length ? student.frises.map(reportFriseHtml).join('') : '<p class="empty">Aucune frise dans ce dossier.</p>') +
     '</article>';
 }

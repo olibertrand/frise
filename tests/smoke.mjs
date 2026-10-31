@@ -356,7 +356,9 @@ check((await fiche.textContent('h1')) === 'martin', 'nom de l’élève en tête
 check(await fiche.locator('section.frise').count() === 2, 'les deux frises de l’élève (y compris sous-dossier)');
 check(await fiche.locator('.rep', { hasText: 'Bataille de Valmy' }).locator('img').count() === 1, 'image du repère');
 check((await fiche.locator('.rep', { hasText: 'Bataille de Valmy' }).textContent()).includes('victoire'), 'texte saisi du repère');
-check(await fiche.locator('.rep .empty').count() > 0, 'repères sans texte signalés');
+check(!(await fiche.textContent('body')).includes('aucun texte saisi'), 'pas de ligne « aucun texte saisi »');
+check((await fiche.locator('.rep h3', { hasText: 'Bataille de Valmy' }).textContent()).includes('20 septembre 1792'), 'date et titre sur la même ligne');
+check(await fiche.locator('.head h1 + .meta').count() === 1, 'nom et dossier sur la même ligne');
 await fiche.screenshot({ path: join(out, '12-fiche-eleve.png'), fullPage: false });
 await fiche.close();
 check(reports['Fiche - mathieu lea.html'].includes('Impossible de lire ce fichier'), 'fichier HTML non-frise signalé');
@@ -371,6 +373,9 @@ check(reportsBin['Fiche - martin.pdf'].subarray(0, 5).toString() === '%PDF-', 'e
 if (has('pdftotext')) {
   const txt = execFileSync('pdftotext', ['-layout', join(out, 'Fiche - martin.pdf'), '-'], { encoding: 'utf8' });
   check(txt.includes('martin') && txt.includes('Bataille de Valmy') && txt.includes('victoire'), 'texte lisible dans le PDF (nom, repère, texte saisi)');
+  check(/martin\s+Dossier « SNT_B_martin »/.test(txt), 'PDF : nom et dossier sur la même ligne');
+  check(/20 septembre 1792\s+Bataille de Valmy/.test(txt), 'PDF : date et titre sur la même ligne');
+  check(!txt.includes('aucun texte saisi') && !/^\s*Événement/m.test(txt), 'PDF : pas de lignes inutiles');
   check(txt.includes('Révolution française') && txt.includes('« Vive la Nation ! »'), 'accents et guillemets français dans le PDF');
   const all = execFileSync('pdfinfo', [join(out, 'Toutes les fiches.pdf')], { encoding: 'utf8' });
   const pages = +(all.match(/Pages:\s+(\d+)/) || [])[1];

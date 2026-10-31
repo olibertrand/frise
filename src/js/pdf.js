@@ -4,7 +4,7 @@
    Les largeurs de texte sont mesurées avec Arial, dont les dimensions sont
    identiques à celles d'Helvetica. */
 
-const PDF_PAGE_W = 595.28, PDF_PAGE_H = 841.89, PDF_MARGIN = 48, PDF_FOOTER = 16;
+const PDF_PAGE_W = 595.28, PDF_PAGE_H = 841.89, PDF_MARGIN = 28.35, PDF_FOOTER = 12;   // marges de 1 cm
 const PDF_FONT = {
   r: ['F1', 'Helvetica', ''],
   b: ['F2', 'Helvetica-Bold', 'bold '],
@@ -98,6 +98,7 @@ class PdfWriter {
     this.page = { ops: [], footer: this.footer };
     this.pages.push(this.page);
     this.y = PDF_PAGE_H - PDF_MARGIN;
+    this.float = null;    // image placée à droite, que le texte contourne
   }
 
   ensure(h) { if (this.y - h < PDF_MARGIN + PDF_FOOTER) this.newPage(); }
@@ -122,11 +123,17 @@ class PdfWriter {
 
   get left() { return PDF_MARGIN + (this.bar ? 11 : 0); }
 
-  /* runs : [{ text, style: 'r'|'b'|'i'|'bi', color, size }] */
+  /* Largeur disponible pour une ligne qui commence à la hauteur actuelle. */
+  availWidth(x0) {
+    let right = PDF_PAGE_W - PDF_MARGIN;
+    if (this.float && this.y > this.float.bottom) right -= this.float.w;
+    return right - x0;
+  }
+
+  /* runs : [{ text, style: 'r'|'b'|'i'|'bi', color, size }]
+     Les lignes sont composées une à une : leur largeur dépend de l'image à droite. */
   paragraph(runs, o = {}) {
     const size = o.size || 10, lineH = o.lineH || Math.round(size * 1.38 * 10) / 10;
-    const x0 = this.left + (o.indent || 0);
-    const maxW = PDF_PAGE_W - PDF_MARGIN - x0;
     const tokens = [];
     for (const r of runs) {
       const st = r.style || 'r', col = r.color || o.color || '#1f2937', sz = r.size || size;
@@ -136,19 +143,35 @@ class PdfWriter {
         else tokens.push({ t: pdfText(part), st, col, sz, space: /^ +$/.test(part) });
       }
     }
-    const lines = [];
-    let line = [], w = 0;
-    const flush = () => {
+    let line = [], w = 0, maxW = 0, x0 = 0, started = false, drawn = 0;
+    const begin = () => {
+      this.ensure(lineH);
+      x0 = this.left + (o.indent || 0);
+      maxW = this.availWidth(x0);
+      started = true;
+    };
+    const draw = () => {
       while (line.length && line[line.length - 1].space) line.pop();
-      lines.push(line);
+      if (!started) begin();
+      if (this.bar) this.fillRect(PDF_MARGIN, this.y - lineH, 3, lineH, this.bar);
+      const base = this.y - lineH * 0.76;
+      let x = x0;
+      for (const tk of line) {
+        if (!tk.space) this.drawText(x, base, tk.t, tk.st, tk.sz, tk.col);
+        x += tk.w;
+      }
+      this.y -= lineH;
       line = [];
       w = 0;
+      started = false;
+      drawn++;
     };
     for (const tk of tokens) {
-      if (tk.nl) { flush(); continue; }
+      if (tk.nl) { draw(); continue; }
       if (tk.space && !line.length) continue;
+      if (!started) begin();
       const tw = this.measure(tk.t, tk.st, tk.sz);
-      if (!tk.space && w + tw > maxW && line.length) flush();
+      if (!tk.space && w + tw > maxW && line.length) { draw(); begin(); }
       if (!tk.space && tw > maxW) {
         // mot trop long (adresse web…) : coupé sur plusieurs lignes
         let s = tk.t;
@@ -159,25 +182,14 @@ class PdfWriter {
           s = s.slice(n);
           line.push(Object.assign({}, tk, { t: piece, w: this.measure(piece, tk.st, tk.sz) }));
           w += line[line.length - 1].w;
-          if (s) flush();
+          if (s) { draw(); begin(); }
         }
         continue;
       }
       line.push(Object.assign({}, tk, { w: tw }));
       w += tw;
     }
-    if (line.length || !lines.length) flush();
-    for (const ln of lines) {
-      this.ensure(lineH);
-      if (this.bar) this.fillRect(PDF_MARGIN, this.y - lineH, 3, lineH, this.bar);
-      const base = this.y - lineH * 0.76;
-      let x = x0;
-      for (const tk of ln) {
-        if (!tk.space) this.drawText(x, base, tk.t, tk.st, tk.sz, tk.col);
-        x += tk.w;
-      }
-      this.y -= lineH;
-    }
+    if (line.length || !drawn) draw();
   }
 
   rule(color) {
@@ -192,13 +204,20 @@ class PdfWriter {
     return img;
   }
 
-  image(img, maxW, maxH) {
-    const s = Math.min(1, maxW / img.w, maxH / img.h);
-    const w = img.w * s, h = img.h * s;
-    this.ensure(h + 6);
-    if (this.bar) this.fillRect(PDF_MARGIN, this.y - h - 6, 3, h + 6, this.bar);
-    this.page.ops.push(`q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${this.left.toFixed(2)} ${(this.y - h - 3).toFixed(2)} cm /${img.key} Do Q`);
-    this.y -= h + 6;
+  /* Image en haut à droite du bloc courant ; le texte qui suit la contourne. */
+  floatImage(img, maxW, maxH) {
+    const sc = Math.min(1, maxW / img.w, maxH / img.h);
+    const w = img.w * sc, h = img.h * sc;
+    this.ensure(h + 8);
+    const x = PDF_PAGE_W - PDF_MARGIN - w;
+    this.page.ops.push(`q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${(this.y - h - 2).toFixed(2)} cm /${img.key} Do Q`);
+    this.float = { bottom: this.y - h - 4, w: w + 10 };
+  }
+
+  /* Fin du bloc : on descend sous l'image si le texte était plus court. */
+  clearFloat() {
+    if (this.float && this.y > this.float.bottom) this.space(this.y - this.float.bottom);
+    this.float = null;
   }
 
   async toBytes() {
@@ -310,8 +329,8 @@ async function pdfImage(pdf, dataURL, cache) {
 }
 
 async function pdfFrise(pdf, f, cache) {
-  pdf.ensure(70);
-  pdf.space(14);
+  pdf.ensure(60);
+  pdf.space(10);
   if (f.error) {
     pdf.paragraph([{ text: f.fileName, style: 'b' }], { size: 13 });
     pdf.paragraph([{ text: 'Impossible de lire ce fichier : ' + f.error, color: '#b91c1c' }]);
@@ -328,43 +347,36 @@ async function pdfFrise(pdf, f, cache) {
     { text: '  — ' + f.fileName, size: 9.5, color: '#6b7280' },
   ], { size: 14, lineH: 19 });
   pdf.rule();
-  if (doc.subtitle) pdf.paragraph([{ text: doc.subtitle, color: '#475569' }], { size: 9 });
-  pdf.paragraph([{
-    text: `${plural(items.length, 'repère')} (${plural(nEv, 'événement')}, ${plural(items.length - nEv, 'période')}) · ${nImg} avec image · ${nTxt} avec texte`,
-    color: '#475569',
-  }], { size: 9 });
+  const stats = `${plural(items.length, 'repère')} (${plural(nEv, 'événement')}, ${plural(items.length - nEv, 'période')}) · ${nImg} avec image · ${nTxt} avec texte`;
+  pdf.paragraph([{ text: (doc.subtitle ? doc.subtitle + ' · ' : '') + stats, color: '#475569' }], { size: 9 });
   if (!items.length) pdf.paragraph([{ text: 'Aucun repère.', style: 'i', color: '#9ca3af' }]);
+  const imgW = (PDF_PAGE_W - 2 * PDF_MARGIN) / 6;
   for (const it of items) {
     const cat = cats.get(it.categoryId);
     const color = it.color || (cat && cat.color) || '#64748b';
-    const hasImg = !!(it.imageId && images[it.imageId]);
-    pdf.ensure(hasImg ? 64 + 150 : 64);   // le titre reste avec son image
-    pdf.space(10);
+    const img = it.imageId && images[it.imageId] ? await pdfImage(pdf, images[it.imageId], cache) : null;
+    pdf.ensure(img ? Math.min(img.h * Math.min(1, imgW / img.w), imgW * 1.4) + 12 : 36);
+    pdf.space(6);
     pdf.bar = color;
-    pdf.paragraph([{ text: it.title || 'Sans titre', style: 'b' }], { size: 12, lineH: 16 });
-    pdf.paragraph([{ text: cap(itemDateText(it, false)), style: 'b', color }], { size: 10.5 });
-    pdf.paragraph([{ text: (it.type === 'period' ? 'Période' : 'Événement') + (cat ? ' · ' + cat.name : ''), color: '#6b7280' }], { size: 8.5 });
-    if (it.imageId && images[it.imageId]) {
-      const img = await pdfImage(pdf, images[it.imageId], cache);
-      if (img) {
-        pdf.space(3);
-        pdf.image(img, 260, 180);
-      }
-      if (it.imageCaption) pdf.paragraph([{ text: it.imageCaption, style: 'i', color: '#6b7280' }], { size: 8.5 });
-    }
-    pdf.space(3);
+    if (img) pdf.floatImage(img, imgW, imgW * 1.4);
+    // date et titre sur la même ligne
+    pdf.paragraph([
+      { text: cap(itemDateText(it, false)), style: 'b', color, size: 10.5 },
+      { text: '   ' },
+      { text: it.title || 'Sans titre', style: 'b', size: 12 },
+    ], { size: 12, lineH: 16 });
     if ((it.details || '').trim()) {
       for (const b of richBlocks(mdToHtml(it.details))) {
         if (b.kind === 'h') pdf.paragraph(b.runs, { size: 10.5 });
         else if (b.kind === 'li') pdf.paragraph(b.runs, { indent: 10 });
         else if (b.kind === 'quote') pdf.paragraph(b.runs, { indent: 12, color: '#374151' });
         else pdf.paragraph(b.runs);
-        pdf.space(2);
+        pdf.space(1.5);
       }
-    } else {
-      pdf.paragraph([{ text: '(aucun texte saisi)', style: 'i', color: '#9ca3af' }]);
     }
-    if (it.link) pdf.paragraph([{ text: 'Lien : ' + it.link, color: '#475569' }], { size: 8.5 });
+    if (img && it.imageCaption) pdf.paragraph([{ text: 'Image : ' + it.imageCaption, style: 'i', color: '#6b7280' }], { size: 8 });
+    if (it.link) pdf.paragraph([{ text: 'Lien : ' + it.link, color: '#475569' }], { size: 8 });
+    pdf.clearFloat();
     pdf.bar = null;
   }
 }
@@ -377,12 +389,12 @@ async function reportPdf(students, title, cache) {
     if (si > 0) pdf.newPage();
     pdf.page.footer = s.name;
     const ok = s.frises.filter(f => !f.error).length;
-    pdf.paragraph([{ text: s.name, style: 'b' }], { size: 22, lineH: 28 });
-    pdf.paragraph([{ text: `Dossier « ${s.folder} » · ${plural(ok, 'frise')}`, color: '#6b7280' }], { size: 10 });
-    if (!s.frises.length) {
-      pdf.space(10);
-      pdf.paragraph([{ text: 'Aucune frise dans ce dossier.', style: 'i', color: '#9ca3af' }]);
-    }
+    // nom, dossier et nombre de frises sur une seule ligne
+    pdf.paragraph([
+      { text: s.name, style: 'b', size: 22 },
+      { text: `    Dossier « ${s.folder} » · ${plural(ok, 'frise')}`, color: '#6b7280', size: 10 },
+    ], { size: 22, lineH: 28 });
+    if (!s.frises.length) pdf.paragraph([{ text: 'Aucune frise dans ce dossier.', style: 'i', color: '#9ca3af' }]);
     for (const f of s.frises) await pdfFrise(pdf, f, cache);
   }
   return pdf.toBytes();
