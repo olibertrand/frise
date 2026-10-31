@@ -74,6 +74,13 @@ const TEX_PREAMBLE = `\\documentclass[11pt,a4paper]{article}
 \\usepackage[hidelinks]{hyperref}
 \\setlength{\\parindent}{0pt}
 \\setlength{\\parskip}{2pt}
+% Fiches de N pages (ou d'un multiple de N) pour l'impression recto-verso
+\\newcounter{debutfiche}\\newcounter{pagesfiche}
+\\newcommand{\\debutfiche}{\\setcounter{debutfiche}{\\value{page}}}
+\\newcommand{\\finfiche}[1]{\\clearpage
+  \\setcounter{pagesfiche}{\\value{page}}\\addtocounter{pagesfiche}{-\\value{debutfiche}}%
+  \\loop\\ifnum\\value{pagesfiche}>#1 \\addtocounter{pagesfiche}{-#1}\\repeat
+  \\loop\\ifnum\\value{pagesfiche}<#1 \\null\\thispagestyle{empty}\\clearpage\\stepcounter{pagesfiche}\\repeat}
 \\pagestyle{plain}
 `;
 
@@ -128,7 +135,9 @@ async function texStudent(s, images) {
   return t;
 }
 
-async function reportLatex(students) {
+async function reportLatex(students, minPages) {
+  const per = Math.max(1, Math.floor(minPages) || 1);
+  const wrap = body => `\\debutfiche\n${body}\\finfiche{${per}}\n`;
   const files = [], images = [];
   const bodies = [];
   for (const s of students) {
@@ -136,13 +145,13 @@ async function reportLatex(students) {
     bodies.push(body);
     files.push({
       name: `latex/fiche-${texSlug(s.base.replace(/^Fiche - /, ''))}.tex`,
-      data: TEX_PREAMBLE + `\\title{${texEsc(s.name)}}\n\\begin{document}\n` + body + '\\end{document}\n',
+      data: TEX_PREAMBLE + `\\title{${texEsc(s.name)}}\n\\begin{document}\n` + wrap(body) + '\\end{document}\n',
     });
   }
   if (students.length > 1) {
     files.push({
       name: 'latex/toutes-les-fiches.tex',
-      data: TEX_PREAMBLE + '\\begin{document}\n' + bodies.join('\n\\clearpage\n') + '\\end{document}\n',
+      data: TEX_PREAMBLE + '\\begin{document}\n' + bodies.map(wrap).join('\n') + '\\end{document}\n',
     });
   }
   files.push({

@@ -326,6 +326,7 @@ await repPage.goto(appUrl);
 await repPage.click('[data-menu=menu-file]');
 await repPage.click('[data-action=reports]');
 await repPage.check('#rep-tex');
+await repPage.fill('#rep-pages', '2');
 await repPage.click('#rep-go');
 await repPage.waitForSelector('#batch-close:not([disabled])', { timeout: 60000 });
 // tout ce qui a été écrit, sous-dossiers compris (contenu en base64)
@@ -377,6 +378,10 @@ if (has('pdftotext')) {
   check(/20 septembre 1792\s+Bataille de Valmy/.test(txt), 'PDF : date et titre sur la même ligne');
   check(!txt.includes('aucun texte saisi') && !/^\s*Événement/m.test(txt), 'PDF : pas de lignes inutiles');
   check(txt.includes('Révolution française') && txt.includes('« Vive la Nation ! »'), 'accents et guillemets français dans le PDF');
+  const pagesOf = f => +(execFileSync('pdfinfo', [f], { encoding: 'utf8' }).match(/Pages:\s+(\d+)/) || [])[1];
+  const perStudent = ['Fiche - martin.pdf', 'Fiche - mathieu lea.pdf', 'Fiche - zoe.pdf'].map(n => pagesOf(join(out, n)));
+  check(perStudent.every(p => p >= 2 && p % 2 === 0), `fiches PDF de 2 pages minimum, nombre pair (${perStudent.join(', ')})`);
+  check(pagesOf(join(out, 'Toutes les fiches.pdf')) === perStudent.reduce((a, b) => a + b, 0), 'PDF global = somme des fiches (chaque élève commence sur un recto)');
   const all = execFileSync('pdfinfo', [join(out, 'Toutes les fiches.pdf')], { encoding: 'utf8' });
   const pages = +(all.match(/Pages:\s+(\d+)/) || [])[1];
   check(pages >= 3, `PDF global lisible (${pages} pages)`);
@@ -395,6 +400,10 @@ if (has('pdflatex')) {
     try { execFileSync('pdflatex', ['-interaction=nonstopmode', '-halt-on-error', t], { cwd: texDir, stdio: 'pipe' }); }
     catch (e) { ok = false; console.error(String(e.stdout).split('\n').filter(l => l.startsWith('!')).join('\n')); }
     check(ok, 'compilation pdflatex de ' + t);
+    if (ok && has('pdfinfo')) {
+      const p = +(execFileSync('pdfinfo', [join(texDir, t.replace('.tex', '.pdf'))], { encoding: 'utf8' }).match(/Pages:\s+(\d+)/) || [])[1];
+      check(p % 2 === 0, `LaTeX : ${t} compte un nombre pair de pages (${p})`);
+    }
   }
 }
 await repPage.close();

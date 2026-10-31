@@ -642,6 +642,10 @@ dialog:not([open]) { display: none; }
     <label class="chk"><input type="checkbox" id="rep-pdf" checked> PDF — prêt à imprimer ou à archiver</label>
     <label class="chk"><input type="checkbox" id="rep-html" checked> Pages web (HTML)</label>
     <label class="chk"><input type="checkbox" id="rep-tex"> LaTeX — fichiers .tex et images, à compiler avec pdflatex ou Overleaf</label>
+    <label class="field">Nombre minimum de pages par fiche (PDF et LaTeX)
+      <input type="number" id="rep-pages" min="1" max="20" value="1" style="width:90px">
+    </label>
+    <p class="hint">Des pages blanches complètent chaque fiche jusqu’à ce nombre, ou jusqu’à un multiple de ce nombre si elle est plus longue. Avec <b>2</b>, chaque élève commence sur un recto en impression recto-verso.</p>
   </div>
   <footer class="dlg-foot"><span class="spacer"></span><button type="button" class="btn" data-close>Annuler</button><button type="button" class="btn primary" id="rep-go">Choisir le dossier de la classe…</button></footer>
 </dialog>
@@ -3435,11 +3439,14 @@ function reportPage(title, body) {
 /* ---------- Lecture des dossiers et production des fiches ---------- */
 
 function openReportsDialog() {
+  try { const v = localStorage.getItem('frise-fiches-pages'); if (v) $('#rep-pages').value = v; } catch (e) { /* ignoré */ }
   $('#dlg-reports').showModal();
 }
 
 function reportFormats() {
-  return { html: $('#rep-html').checked, pdf: $('#rep-pdf').checked, tex: $('#rep-tex').checked };
+  const minPages = clamp(parseInt($('#rep-pages').value, 10) || 1, 1, 20);
+  try { localStorage.setItem('frise-fiches-pages', String(minPages)); } catch (e) { /* ignoré */ }
+  return { html: $('#rep-html').checked, pdf: $('#rep-pdf').checked, tex: $('#rep-tex').checked, minPages };
 }
 
 async function studentReports(formats) {
@@ -3497,16 +3504,16 @@ async function reportFiles(students, formats) {
     const cache = new Map();
     for (let i = 0; i < students.length; i++) {
       batchDialog(`<p>Création des PDF… ${i + 1} / ${students.length}</p>`, false);
-      files.push({ name: students[i].base + '.pdf', data: await reportPdf([students[i]], students[i].name, cache) });
+      files.push({ name: students[i].base + '.pdf', data: await reportPdf([students[i]], students[i].name, cache, formats.minPages) });
     }
     if (multi) {
       batchDialog('<p>Création de « Toutes les fiches.pdf »…</p>', false);
-      files.push({ name: 'Toutes les fiches.pdf', data: await reportPdf(students, 'Toutes les fiches', cache) });
+      files.push({ name: 'Toutes les fiches.pdf', data: await reportPdf(students, 'Toutes les fiches', cache, formats.minPages) });
     }
   }
   if (formats.tex) {
     batchDialog('<p>Création des fichiers LaTeX…</p>', false);
-    files.push(...await reportLatex(students));
+    files.push(...await reportLatex(students, formats.minPages));
   }
   return files;
 }
@@ -3837,9 +3844,9 @@ class PdfWriter {
     const total = this.pages.length;
     for (let i = 0; i < total; i++) {
       const p = this.pages[i];
-      const label = pdfText((p.footer ? p.footer + ' — ' : '') + `page ${i + 1} / ${total}`);
+      const label = p.blank ? '' : pdfText(p.label || ((p.footer ? p.footer + ' — ' : '') + `page ${i + 1} / ${total}`));
       const fw = this.measure(label, 'r', 8);
-      const ops = p.ops.concat(`BT /F1 8 Tf ${pdfColor('#9ca3af')} rg ${((PDF_PAGE_W - fw) / 2).toFixed(2)} ${(PDF_MARGIN - 18).toFixed(2)} Td ${pdfHex(label)} Tj ET`);
+      const ops = label ? p.ops.concat(`BT /F1 8 Tf ${pdfColor('#9ca3af')} rg ${((PDF_PAGE_W - fw) / 2).toFixed(2)} ${(PDF_MARGIN - 18).toFixed(2)} Td ${pdfHex(label)} Tj ET`) : p.ops;
       const raw = enc.encode(ops.join('\n'));
       const packed = await pdfDeflate(raw);
       const data = packed || raw;
@@ -3973,13 +3980,18 @@ async function pdfFrise(pdf, f, cache) {
   }
 }
 
-async function reportPdf(students, title, cache) {
+/* minPages : chaque fiche occupe au moins ce nombre de pages, et un multiple
+   de ce nombre si elle est plus longue (pages blanches ajoutées à la fin) :
+   avec 2, chaque élève commence toujours sur un recto. */
+async function reportPdf(students, title, cache, minPages) {
   const pdf = new PdfWriter(title);
+  const per = Math.max(1, Math.floor(minPages) || 1);
   for (let si = 0; si < students.length; si++) {
     const s = students[si];
     pdf.footer = s.name;
     if (si > 0) pdf.newPage();
     pdf.page.footer = s.name;
+    const first = pdf.pages.length - 1;
     const ok = s.frises.filter(f => !f.error).length;
     // nom, dossier et nombre de frises sur une seule ligne
     pdf.paragraph([
@@ -3988,6 +4000,13 @@ async function reportPdf(students, title, cache) {
     ], { size: 22, lineH: 28 });
     if (!s.frises.length) pdf.paragraph([{ text: 'Aucune frise dans ce dossier.', style: 'i', color: '#9ca3af' }]);
     for (const f of s.frises) await pdfFrise(pdf, f, cache);
+    // numérotation propre à chaque fiche, puis pages blanches de complément
+    const used = pdf.pages.length - first;
+    pdf.pages.slice(first).forEach((p, k) => { p.label = `${s.name} — page ${k + 1} / ${used}`; });
+    for (let k = used; k % per !== 0; k++) {
+      pdf.newPage();
+      pdf.page.blank = true;
+    }
   }
   return pdf.toBytes();
 }
@@ -4069,6 +4088,13 @@ const TEX_PREAMBLE = `\\documentclass[11pt,a4paper]{article}
 \\usepackage[hidelinks]{hyperref}
 \\setlength{\\parindent}{0pt}
 \\setlength{\\parskip}{2pt}
+% Fiches de N pages (ou d'un multiple de N) pour l'impression recto-verso
+\\newcounter{debutfiche}\\newcounter{pagesfiche}
+\\newcommand{\\debutfiche}{\\setcounter{debutfiche}{\\value{page}}}
+\\newcommand{\\finfiche}[1]{\\clearpage
+  \\setcounter{pagesfiche}{\\value{page}}\\addtocounter{pagesfiche}{-\\value{debutfiche}}%
+  \\loop\\ifnum\\value{pagesfiche}>#1 \\addtocounter{pagesfiche}{-#1}\\repeat
+  \\loop\\ifnum\\value{pagesfiche}<#1 \\null\\thispagestyle{empty}\\clearpage\\stepcounter{pagesfiche}\\repeat}
 \\pagestyle{plain}
 `;
 
@@ -4123,7 +4149,9 @@ async function texStudent(s, images) {
   return t;
 }
 
-async function reportLatex(students) {
+async function reportLatex(students, minPages) {
+  const per = Math.max(1, Math.floor(minPages) || 1);
+  const wrap = body => `\\debutfiche\n${body}\\finfiche{${per}}\n`;
   const files = [], images = [];
   const bodies = [];
   for (const s of students) {
@@ -4131,13 +4159,13 @@ async function reportLatex(students) {
     bodies.push(body);
     files.push({
       name: `latex/fiche-${texSlug(s.base.replace(/^Fiche - /, ''))}.tex`,
-      data: TEX_PREAMBLE + `\\title{${texEsc(s.name)}}\n\\begin{document}\n` + body + '\\end{document}\n',
+      data: TEX_PREAMBLE + `\\title{${texEsc(s.name)}}\n\\begin{document}\n` + wrap(body) + '\\end{document}\n',
     });
   }
   if (students.length > 1) {
     files.push({
       name: 'latex/toutes-les-fiches.tex',
-      data: TEX_PREAMBLE + '\\begin{document}\n' + bodies.join('\n\\clearpage\n') + '\\end{document}\n',
+      data: TEX_PREAMBLE + '\\begin{document}\n' + bodies.map(wrap).join('\n') + '\\end{document}\n',
     });
   }
   files.push({

@@ -245,9 +245,9 @@ class PdfWriter {
     const total = this.pages.length;
     for (let i = 0; i < total; i++) {
       const p = this.pages[i];
-      const label = pdfText((p.footer ? p.footer + ' — ' : '') + `page ${i + 1} / ${total}`);
+      const label = p.blank ? '' : pdfText(p.label || ((p.footer ? p.footer + ' — ' : '') + `page ${i + 1} / ${total}`));
       const fw = this.measure(label, 'r', 8);
-      const ops = p.ops.concat(`BT /F1 8 Tf ${pdfColor('#9ca3af')} rg ${((PDF_PAGE_W - fw) / 2).toFixed(2)} ${(PDF_MARGIN - 18).toFixed(2)} Td ${pdfHex(label)} Tj ET`);
+      const ops = label ? p.ops.concat(`BT /F1 8 Tf ${pdfColor('#9ca3af')} rg ${((PDF_PAGE_W - fw) / 2).toFixed(2)} ${(PDF_MARGIN - 18).toFixed(2)} Td ${pdfHex(label)} Tj ET`) : p.ops;
       const raw = enc.encode(ops.join('\n'));
       const packed = await pdfDeflate(raw);
       const data = packed || raw;
@@ -381,13 +381,18 @@ async function pdfFrise(pdf, f, cache) {
   }
 }
 
-async function reportPdf(students, title, cache) {
+/* minPages : chaque fiche occupe au moins ce nombre de pages, et un multiple
+   de ce nombre si elle est plus longue (pages blanches ajoutées à la fin) :
+   avec 2, chaque élève commence toujours sur un recto. */
+async function reportPdf(students, title, cache, minPages) {
   const pdf = new PdfWriter(title);
+  const per = Math.max(1, Math.floor(minPages) || 1);
   for (let si = 0; si < students.length; si++) {
     const s = students[si];
     pdf.footer = s.name;
     if (si > 0) pdf.newPage();
     pdf.page.footer = s.name;
+    const first = pdf.pages.length - 1;
     const ok = s.frises.filter(f => !f.error).length;
     // nom, dossier et nombre de frises sur une seule ligne
     pdf.paragraph([
@@ -396,6 +401,13 @@ async function reportPdf(students, title, cache) {
     ], { size: 22, lineH: 28 });
     if (!s.frises.length) pdf.paragraph([{ text: 'Aucune frise dans ce dossier.', style: 'i', color: '#9ca3af' }]);
     for (const f of s.frises) await pdfFrise(pdf, f, cache);
+    // numérotation propre à chaque fiche, puis pages blanches de complément
+    const used = pdf.pages.length - first;
+    pdf.pages.slice(first).forEach((p, k) => { p.label = `${s.name} — page ${k + 1} / ${used}`; });
+    for (let k = used; k % per !== 0; k++) {
+      pdf.newPage();
+      pdf.page.blank = true;
+    }
   }
   return pdf.toBytes();
 }

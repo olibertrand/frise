@@ -280,6 +280,10 @@
     <label class="chk"><input type="checkbox" id="rep-pdf" checked> PDF — prêt à imprimer ou à archiver</label>
     <label class="chk"><input type="checkbox" id="rep-html" checked> Pages web (HTML)</label>
     <label class="chk"><input type="checkbox" id="rep-tex"> LaTeX — fichiers .tex et images, à compiler avec pdflatex ou Overleaf</label>
+    <label class="field">Nombre minimum de pages par fiche (PDF et LaTeX)
+      <input type="number" id="rep-pages" min="1" max="20" value="1" style="width:90px">
+    </label>
+    <p class="hint">Des pages blanches complètent chaque fiche jusqu’à ce nombre, ou jusqu’à un multiple de ce nombre si elle est plus longue. Avec <b>2</b>, chaque élève commence sur un recto en impression recto-verso.</p>
   </div>
   <footer class="dlg-foot"><span class="spacer"></span><button type="button" class="btn" data-close>Annuler</button><button type="button" class="btn primary" id="rep-go">Choisir le dossier de la classe…</button></footer>
 </dialog>

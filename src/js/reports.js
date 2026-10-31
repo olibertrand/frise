@@ -102,11 +102,14 @@ function reportPage(title, body) {
 /* ---------- Lecture des dossiers et production des fiches ---------- */
 
 function openReportsDialog() {
+  try { const v = localStorage.getItem('frise-fiches-pages'); if (v) $('#rep-pages').value = v; } catch (e) { /* ignoré */ }
   $('#dlg-reports').showModal();
 }
 
 function reportFormats() {
-  return { html: $('#rep-html').checked, pdf: $('#rep-pdf').checked, tex: $('#rep-tex').checked };
+  const minPages = clamp(parseInt($('#rep-pages').value, 10) || 1, 1, 20);
+  try { localStorage.setItem('frise-fiches-pages', String(minPages)); } catch (e) { /* ignoré */ }
+  return { html: $('#rep-html').checked, pdf: $('#rep-pdf').checked, tex: $('#rep-tex').checked, minPages };
 }
 
 async function studentReports(formats) {
@@ -164,16 +167,16 @@ async function reportFiles(students, formats) {
     const cache = new Map();
     for (let i = 0; i < students.length; i++) {
       batchDialog(`<p>Création des PDF… ${i + 1} / ${students.length}</p>`, false);
-      files.push({ name: students[i].base + '.pdf', data: await reportPdf([students[i]], students[i].name, cache) });
+      files.push({ name: students[i].base + '.pdf', data: await reportPdf([students[i]], students[i].name, cache, formats.minPages) });
     }
     if (multi) {
       batchDialog('<p>Création de « Toutes les fiches.pdf »…</p>', false);
-      files.push({ name: 'Toutes les fiches.pdf', data: await reportPdf(students, 'Toutes les fiches', cache) });
+      files.push({ name: 'Toutes les fiches.pdf', data: await reportPdf(students, 'Toutes les fiches', cache, formats.minPages) });
     }
   }
   if (formats.tex) {
     batchDialog('<p>Création des fichiers LaTeX…</p>', false);
-    files.push(...await reportLatex(students));
+    files.push(...await reportLatex(students, formats.minPages));
   }
   return files;
 }
